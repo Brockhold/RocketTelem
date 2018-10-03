@@ -3,7 +3,8 @@
 #include <RH_RF69.h>
 #include "wiring_private.h" // pinPeripheral() function
 
-#define HEADLESS true
+#define HEADLESS false
+#define WAIT false
 #define UPDATE_FREQ 1
 
 // Serial port pinmux for GPS comms
@@ -45,7 +46,7 @@ void setup() {
   
   if (!HEADLESS & !rf69.init()) {
     Serial.println("RFM69 radio init failed");
-    while (1);
+    while (1); // halt
   }
   if (!HEADLESS) Serial.println("RFM69 radio init OK!");
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
@@ -67,7 +68,7 @@ void setup() {
   pinPeripheral(PIN_SERIAL2_TX, PIO_SERCOM);
   pinPeripheral(PIN_SERIAL2_RX, PIO_SERCOM);
 
-  if (!HEADLESS) {
+  if (WAIT) {
   while (!Serial);  //wait until host Serial is ready
     Serial.begin(115200); // talk to the host at a brisk rate, so we have time to write without dropping chars
     Serial.println("Adafruit GPS library basic test!");
@@ -96,6 +97,17 @@ void setup() {
 
   delay(1000); // Wait a second for the GPS to be ready for us
   GPSSerial.println(PMTK_Q_RELEASE);
+}
+
+
+// toggle the given pin by some count # of times for a duration of 'wait'
+void blink(int pin, int count, int wait) {
+  bool state = false;
+  for (int i = 0; i < count * 2; i++) {
+    digitalWrite(pin, state?HIGH:LOW);
+    state = !state;
+    delay(wait);
+  }
 }
 
 void loop() {
@@ -153,10 +165,10 @@ void loop() {
     if (!HEADLESS) { Serial.print("Sending "); Serial.println(radiopacket); }
     rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
     rf69.waitPacketSent();
-    if (!HEADLESS) Serial.print("Sent!");
+    blink(LED_BUILTIN, 1, 10);
     
     if (!HEADLESS) {
-      Serial.print("\nTime: ");
+      Serial.print("Time: ");
       Serial.print(GPS.hour, DEC); Serial.print(':');
       Serial.print(GPS.minute, DEC); Serial.print(':');
       Serial.print(GPS.seconds, DEC); Serial.print('.');
@@ -177,6 +189,7 @@ void loop() {
         Serial.print("Altitude: "); Serial.println(GPS.altitude);
         Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
       }
+      Serial.println("-");
     }
     
     timer = millis(); // reset the timer

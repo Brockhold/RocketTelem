@@ -70,16 +70,20 @@ void loop() {
       Serial.print("RSSI: ");
       Serial.println(rf69.lastRssi(), DEC);
   
-      Serial.print("Fix: "); Serial.println((buf[0] == 1)?"Yes":"No");
-      Serial.print("Quality:"); Serial.println(buf[1]);
-      Serial.print("Satellites:"); Serial.println(buf[2]);
+      Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
+      Serial.print(", Quality: "); Serial.print(buf[1]);
+      Serial.print(", Satellites: "); Serial.println(buf[2]);
 
-      Serial.print("Year:"); Serial.println(buf[3]);
-      Serial.print("Month:"); Serial.println(buf[4]);
-      Serial.print("Day:"); Serial.println(buf[5]);
-      Serial.print("Hour:"); Serial.println(buf[6]);
-      Serial.print("Minute:"); Serial.println(buf[7]);
-      Serial.print("Second:"); Serial.println(buf[8]);
+      // Year/Month/Day
+      Serial.print(buf[3]); Serial.print("/");
+      Serial.print(buf[4]); Serial.print("/");
+      Serial.println(buf[5]);
+      
+      // Hour:Minute:Second
+      Serial.print(buf[6]); Serial.print(":");
+      Serial.print(buf[7]); Serial.print(":");
+      Serial.println(buf[8]);
+      Serial.println("-");
       
       //Serial.print("Lat:"); Serial.println(buf[9]);
       //Serial.print("Lon:"); Serial.println(buf[]);
