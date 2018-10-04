@@ -62,34 +62,33 @@ void loop() {
     uint8_t len = sizeof(buf);
     if (rf69.recv(buf, &len)) {
       if (!len) return;
-      buf[len] = 0;
-      Serial.print("Received [");
-      Serial.print(len);
-      Serial.print("]: ");
-      Serial.println((char*)buf);
-      Serial.print("RSSI: ");
+
+      Serial.print("Received ["); 
+      Serial.print(len); 
+      Serial.print("] with RSSI: ");
       Serial.println(rf69.lastRssi(), DEC);
-  
+
+      Serial.print("Time: "); // Hour:Minute:Second
+      Serial.print(buf[6]); Serial.print(":");
+      Serial.print(buf[7]); Serial.print(":");
+      Serial.println(buf[8]);
+
+      Serial.print("Date: "); // Year/Month/Day
+      Serial.print(buf[3]); Serial.print("/");
+      Serial.print(buf[4]); Serial.print("/");
+      Serial.println(buf[5]);
+
+      // GPS reception status
       Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
       Serial.print(", Quality: "); Serial.print(buf[1]);
       Serial.print(", Satellites: "); Serial.println(buf[2]);
 
-      // Year/Month/Day
-      Serial.print(buf[3]); Serial.print("/");
-      Serial.print(buf[4]); Serial.print("/");
-      Serial.println(buf[5]);
-      
-      // Hour:Minute:Second
-      Serial.print(buf[6]); Serial.print(":");
-      Serial.print(buf[7]); Serial.print(":");
-      Serial.println(buf[8]);
+      // If there is a GPS fix, print the reported Lat & Ln
+      if (buf[0] == 1) {
+        Serial.print("Lat: "); Serial.print(buf[9]); Serial.print(" "); Serial.println(buf[18]);
+        Serial.print("Lon: "); Serial.print(buf[13]); Serial.print(" "); Serial.println(buf[19]);
+      }
       Serial.println("-");
-      
-      //Serial.print("Lat:"); Serial.println(buf[9]);
-      //Serial.print("Lon:"); Serial.println(buf[]);
-      //Serial.print("Satellites:"); Serial.println(buf[2]);
-      //Serial.print("Satellites:"); Serial.println(buf[2]);
-      
     } else {
       Serial.println("Receive failed");
     }

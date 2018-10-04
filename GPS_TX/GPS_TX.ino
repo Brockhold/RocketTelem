@@ -17,7 +17,7 @@ Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIA
 #define GPSSerial Serial2
 // Connect to the GPS on the hardware serial port
 Adafruit_GPS GPS(&GPSSerial);
-     
+
 // echo the GPS data to the Serial console?
 #define GPSECHO false
 
@@ -26,6 +26,8 @@ Adafruit_GPS GPS(&GPSSerial);
 #define RFM69_CS      6
 #define RFM69_INT     11
 #define RFM69_RST     5
+
+#define PACKET_LEN    22
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
@@ -142,28 +144,33 @@ void loop() {
      * 
      * 2 Bytes of the chars:
      *    lat, lon
+     * 
      */
     int pktpos = 0;
-    char radiopacket[22] = "";
-    // GPS Status
-    itoa(GPS.fix?1:0, radiopacket + pktpos++, 10);
-    itoa(GPS.fixquality, radiopacket + pktpos++, 10);
-    itoa(GPS.satellites, radiopacket + pktpos++, 10);
-    // Time
-    itoa(GPS.year, radiopacket + pktpos++, 10);
-    itoa(GPS.month, radiopacket + pktpos++, 10);
-    itoa(GPS.day, radiopacket + pktpos++, 10);
-    itoa(GPS.hour, radiopacket + pktpos++, 10);
-    itoa(GPS.minute, radiopacket + pktpos++, 10);
-    itoa(GPS.seconds, radiopacket + pktpos++, 10);
-    // Position
-    itoa(GPS.latitude_fixed, radiopacket + (pktpos += 4), 10);
-    itoa(GPS.longitude_fixed, radiopacket + (pktpos += 4), 10);
-    itoa(GPS.lat, radiopacket + pktpos++, 10);
-    itoa(GPS.lon, radiopacket + pktpos++, 10);
+    uint8_t radiopacket[PACKET_LEN];
+
+    radiopacket[pktpos++] = GPS.fix?1:0;
+    radiopacket[pktpos++] = GPS.fixquality;
+    radiopacket[pktpos++] = GPS.satellites;
+    radiopacket[pktpos++] = GPS.year;
+    radiopacket[pktpos++] = GPS.month;
+    radiopacket[pktpos++] = GPS.day;
+    radiopacket[pktpos++] = GPS.hour;
+    radiopacket[pktpos++] = GPS.minute;
+    radiopacket[pktpos++] = GPS.seconds;
+    radiopacket[pktpos+=4] = GPS.latitude_fixed;
+    radiopacket[pktpos+=4] = GPS.longitude_fixed;
+    radiopacket[pktpos++] = GPS.lat;
+    radiopacket[pktpos++] = GPS.lon;
     
-    if (!HEADLESS) { Serial.print("Sending "); Serial.println(radiopacket); }
-    rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
+    if (!HEADLESS) { 
+      Serial.print("Packet "); 
+      for (int i = 0; i < PACKET_LEN; i++) {
+        Serial.print(radiopacket[i]); Serial.print(' ');
+      }
+      Serial.println(""); 
+    }
+    rf69.send(radiopacket, PACKET_LEN);
     rf69.waitPacketSent();
     blink(LED_BUILTIN, 1, 10);
     
@@ -174,9 +181,11 @@ void loop() {
       Serial.print(GPS.seconds, DEC); Serial.print('.');
       Serial.println(GPS.milliseconds);
       Serial.print("Date: ");
-      Serial.print(GPS.day, DEC); Serial.print('/');
-      Serial.print(GPS.month, DEC); Serial.print("/20");
-      Serial.println(GPS.year, DEC);
+      
+      Serial.print(GPS.year, DEC); Serial.print("/");
+      Serial.print(GPS.month, DEC); Serial.print('/');
+      Serial.println(GPS.day, DEC);
+      
       Serial.print("Fix: "); Serial.print((int)GPS.fix);
       Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
       if (GPS.fix) {
