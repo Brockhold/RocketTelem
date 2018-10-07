@@ -1,3 +1,8 @@
+/*
+ * Sketch for receiving GPS data from RF.
+ * Adafruit M0
+ */
+
 #include <SPI.h>
 #include <RH_RF69.h>
 
@@ -12,17 +17,77 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
+/*
+ * SETUP
+ */
 void setup() {
   Serial.begin(115200);
   while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
-  pinMode(LED_BUILTIN, OUTPUT);     
+  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);   
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
 
   Serial.println("Feather RFM69 RX Test!");
   Serial.println();
 
+  rfInitialize();
+}
+
+/*
+ * Program Loop
+ */
+void loop() {
+  // Should be a message for us now   
+    uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+  if (rf69.available() && rf69.recv(buf, &len)) {
+    
+    if (!len) return;
+
+    // blink LED to show activity
+    blink(LED_BUILTIN, 1, 50);
+
+    Serial.print("Received ["); 
+    Serial.print(len); 
+    Serial.print("] with RSSI: ");
+    Serial.println(rf69.lastRssi(), DEC);
+
+    Serial.print("Time: "); // Hour:Minute:Second
+    Serial.print(buf[6]); Serial.print(":");
+    Serial.print(buf[7]); Serial.print(":");
+    Serial.println(buf[8]);
+
+    Serial.print("Date: "); // Year/Month/Day
+    Serial.print(buf[3]); Serial.print("/");
+    Serial.print(buf[4]); Serial.print("/");
+    Serial.println(buf[5]);
+
+    // GPS reception status
+    Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
+    Serial.print(", Quality: "); Serial.print(buf[1]);
+    Serial.print(", Satellites: "); Serial.println(buf[2]);
+
+    // If there is a GPS fix, print the reported Lat & Ln
+    if (buf[0] == 1) {
+      Serial.print("Lat: ");
+      Serial.print(((buf[9]*100)+(buf[10])));
+      Serial.print("."); Serial.print((buf[11]*1000)+(buf[12]*10)+buf[13]);
+      Serial.print(" "); Serial.println((char) buf[19]);
+      Serial.print("Lon: ");
+      Serial.print(((buf[14]*100)+(buf[15])));
+      Serial.print("."); Serial.print((buf[16]*1000)+(buf[17]*10)+buf[18]);
+      Serial.print(" "); Serial.println((char) buf[20]);
+      Serial.print("Speed (knots): "); Serial.print(buf[21]);
+      Serial.print(", Angle: "); Serial.print(buf[22]);
+      Serial.print(", Altitude: "); Serial.println(buf[23]);
+    }
+    Serial.println("-");
+  }
+}
+
+// RF Initialize Method
+void rfInitialize(){
   // manual reset
   digitalWrite(RFM69_RST, HIGH);
   delay(10);
@@ -51,48 +116,16 @@ void setup() {
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+  Serial.println();
+  Serial.println("Waiting for message...");
 }
 
-void loop() {
-  // Should be a message for us now   
-    uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
-  if (rf69.available() && rf69.recv(buf, &len)) {
-    
-    if (!len) return;
-
-    Serial.print("Received ["); 
-    Serial.print(len); 
-    Serial.print("] with RSSI: ");
-    Serial.println(rf69.lastRssi(), DEC);
-
-    Serial.print("Time: "); // Hour:Minute:Second
-    Serial.print(buf[6]); Serial.print(":");
-    Serial.print(buf[7]); Serial.print(":");
-    Serial.println(buf[8]);
-
-    Serial.print("Date: "); // Year/Month/Day
-    Serial.print(buf[3]); Serial.print("/");
-    Serial.print(buf[4]); Serial.print("/");
-    Serial.println(buf[5]);
-
-    // GPS reception status
-    Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
-    Serial.print(", Quality: "); Serial.print(buf[1]);
-    Serial.print(", Satellites: "); Serial.println(buf[2]);
-
-    // If there is a GPS fix, print the reported Lat & Ln
-    if (buf[0] == 1) {
-      Serial.print("Lat: ");
-      Serial.print((buf[9]*100000000)+(buf[10]*1000000)+(buf[11]*10000)+(buf[12]*100)+buf[13]);
-      Serial.print(" "); Serial.println((char) buf[19]);
-      Serial.print("Lon: ");
-      Serial.print((buf[14]*100000000)+(buf[15]*1000000)+(buf[16]*10000)+(buf[17]*100)+buf[18]);
-      Serial.print(" "); Serial.println((char) buf[20]);
-      Serial.print("Speed (knots): "); Serial.print(buf[21]);
-      Serial.print(", Angle: "); Serial.print(buf[22]);
-      Serial.print(", Altitude: "); Serial.println(buf[23]);
-    }
-    Serial.println("-");
+// toggle the given pin by some count # of times for a duration of 'wait'
+void blink(int pin, int count, int wait) {
+  bool state = false;
+  for (int i = 0; i < count * 2; i++) {
+    digitalWrite(pin, state?HIGH:LOW);
+    state = !state;
+    delay(wait);
   }
 }
