@@ -51,46 +51,48 @@ void setup() {
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
-  Serial.println("Waiting for messages...");
 }
 
-
 void loop() {
- if (rf69.available()) {
-    // Should be a message for us now   
+  // Should be a message for us now   
     uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
-    if (rf69.recv(buf, &len)) {
-      if (!len) return;
+  if (rf69.available() && rf69.recv(buf, &len)) {
+    
+    if (!len) return;
 
-      Serial.print("Received ["); 
-      Serial.print(len); 
-      Serial.print("] with RSSI: ");
-      Serial.println(rf69.lastRssi(), DEC);
+    Serial.print("Received ["); 
+    Serial.print(len); 
+    Serial.print("] with RSSI: ");
+    Serial.println(rf69.lastRssi(), DEC);
 
-      Serial.print("Time: "); // Hour:Minute:Second
-      Serial.print(buf[6]); Serial.print(":");
-      Serial.print(buf[7]); Serial.print(":");
-      Serial.println(buf[8]);
+    Serial.print("Time: "); // Hour:Minute:Second
+    Serial.print(buf[6]); Serial.print(":");
+    Serial.print(buf[7]); Serial.print(":");
+    Serial.println(buf[8]);
 
-      Serial.print("Date: "); // Year/Month/Day
-      Serial.print(buf[3]); Serial.print("/");
-      Serial.print(buf[4]); Serial.print("/");
-      Serial.println(buf[5]);
+    Serial.print("Date: "); // Year/Month/Day
+    Serial.print(buf[3]); Serial.print("/");
+    Serial.print(buf[4]); Serial.print("/");
+    Serial.println(buf[5]);
 
-      // GPS reception status
-      Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
-      Serial.print(", Quality: "); Serial.print(buf[1]);
-      Serial.print(", Satellites: "); Serial.println(buf[2]);
+    // GPS reception status
+    Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
+    Serial.print(", Quality: "); Serial.print(buf[1]);
+    Serial.print(", Satellites: "); Serial.println(buf[2]);
 
-      // If there is a GPS fix, print the reported Lat & Ln
-      if (buf[0] == 1) {
-        Serial.print("Lat: "); Serial.print(buf[9]); Serial.print(" "); Serial.println(buf[18]);
-        Serial.print("Lon: "); Serial.print(buf[13]); Serial.print(" "); Serial.println(buf[19]);
-      }
-      Serial.println("-");
-    } else {
-      Serial.println("Receive failed");
+    // If there is a GPS fix, print the reported Lat & Ln
+    if (buf[0] == 1) {
+      Serial.print("Lat: ");
+      Serial.print((buf[9]*100000000)+(buf[10]*1000000)+(buf[11]*10000)+(buf[12]*100)+buf[13]);
+      Serial.print(" "); Serial.println((char) buf[19]);
+      Serial.print("Lon: ");
+      Serial.print((buf[14]*100000000)+(buf[15]*1000000)+(buf[16]*10000)+(buf[17]*100)+buf[18]);
+      Serial.print(" "); Serial.println((char) buf[20]);
+      Serial.print("Speed (knots): "); Serial.print(buf[21]);
+      Serial.print(", Angle: "); Serial.print(buf[22]);
+      Serial.print(", Altitude: "); Serial.println(buf[23]);
     }
+    Serial.println("-");
   }
 }
