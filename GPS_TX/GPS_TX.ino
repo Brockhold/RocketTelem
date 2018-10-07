@@ -27,7 +27,7 @@ Adafruit_GPS GPS(&GPSSerial);
 #define RFM69_INT     11
 #define RFM69_RST     5
 
-#define PACKET_LEN    22
+#define PACKET_LEN    24
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
@@ -147,21 +147,34 @@ void loop() {
      * 
      */
     int pktpos = 0;
-    uint8_t radiopacket[PACKET_LEN];
+    uint8_t radiopacket[PACKET_LEN];    
 
-    radiopacket[pktpos++] = GPS.fix?1:0;
-    radiopacket[pktpos++] = GPS.fixquality;
-    radiopacket[pktpos++] = GPS.satellites;
-    radiopacket[pktpos++] = GPS.year;
-    radiopacket[pktpos++] = GPS.month;
-    radiopacket[pktpos++] = GPS.day;
-    radiopacket[pktpos++] = GPS.hour;
-    radiopacket[pktpos++] = GPS.minute;
-    radiopacket[pktpos++] = GPS.seconds;
-    radiopacket[pktpos+=4] = GPS.latitude_fixed;
-    radiopacket[pktpos+=4] = GPS.longitude_fixed;
-    radiopacket[pktpos++] = GPS.lat;
-    radiopacket[pktpos++] = GPS.lon;
+    Serial.println(GPS.latitude_fixed);
+    Serial.println(GPS.longitude_fixed);
+    radiopacket[0] = GPS.fix;
+    radiopacket[1] = GPS.fixquality;
+    radiopacket[2] = GPS.satellites;
+    radiopacket[3] = GPS.year;
+    radiopacket[4] = GPS.month;
+    radiopacket[5] = GPS.day;
+    radiopacket[6] = GPS.hour;
+    radiopacket[7] = GPS.minute;
+    radiopacket[8] = GPS.seconds;
+    radiopacket[9] = GPS.latitude_fixed / 100000000;
+    radiopacket[10] = GPS.latitude_fixed / 1000000 % 100;
+    radiopacket[11] = GPS.latitude_fixed / 10000 % 100;
+    radiopacket[12] = GPS.latitude_fixed / 100 % 100;
+    radiopacket[13] = GPS.latitude_fixed % 100;
+    radiopacket[14] = GPS.longitude_fixed / 100000000;
+    radiopacket[15] = GPS.longitude_fixed / 1000000 % 100;
+    radiopacket[16] = GPS.longitude_fixed / 10000 % 100;
+    radiopacket[17] = GPS.longitude_fixed / 100 % 100;
+    radiopacket[18] = GPS.longitude_fixed % 100;
+    radiopacket[19] = GPS.lat;
+    radiopacket[20] = GPS.lon;
+    radiopacket[21] = GPS.speed;
+    radiopacket[22] = GPS.angle;
+    radiopacket[23] = GPS.altitude;
     
     if (!HEADLESS) { 
       Serial.print("Packet "); 
