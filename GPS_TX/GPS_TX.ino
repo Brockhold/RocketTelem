@@ -86,9 +86,6 @@ void loop() {
   if (millis() - timer > UPDATE_FREQ * 1000) {
 
     uint8_t radiopacket[PACKET_LEN];
-
-    Serial.println(GPS.latitude_fixed);
-    Serial.println(GPS.longitude_fixed);
     radiopacket[0] = GPS.fix;
     radiopacket[1] = GPS.fixquality;
     radiopacket[2] = GPS.satellites;
@@ -122,11 +119,11 @@ void loop() {
     blink(LED_BUILTIN, 1, 50);
 
     if(!HEADLESS){
-      Serial.print("Packet "); 
+      Serial.print("Packet {"); 
       for (int i = 0; i < PACKET_LEN; i++) {
         Serial.print(radiopacket[i]); Serial.print(' ');
       }
-      Serial.println(""); 
+      Serial.println("}"); 
     }
     
     outputToSerial();
@@ -150,16 +147,28 @@ void outputToSerial(){
       Serial.println(GPS.day, DEC);
       
       Serial.print("Fix: "); Serial.print((int)GPS.fix);
-      Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+      Serial.print(" quality: "); Serial.print((int)GPS.fixquality);
+      Serial.print(", Satellites: "); Serial.println((int)GPS.satellites);
       if (GPS.fix) {
+        //Serial.println(GPS.latitude_fixed);
+        //Serial.println(GPS.longitude_fixed);
+        // Pull out the whole and decimal components of the lat and long for display
+        int latWhole = GPS.latitude_fixed / 10000000;
+        int latDec = GPS.latitude_fixed % 10000000;
+        int lonWhole = GPS.longitude_fixed / 10000000;
+        int lonDec = GPS.longitude_fixed % 10000000;
+        
         Serial.print("Location: ");
-        Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
+        if(GPS.lat == 'S') Serial.print("-");
+        Serial.print(latWhole); Serial.print("."); Serial.print(latDec);
         Serial.print(", ");
-        Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
+        if(GPS.lon == 'W') Serial.print("-");
+        Serial.print(lonWhole); Serial.print("."); Serial.println(lonDec);
+        
         Serial.print("Speed (knots): "); Serial.println(GPS.speed);
         Serial.print("Angle: "); Serial.println(GPS.angle);
         Serial.print("Altitude: "); Serial.println(GPS.altitude);
-        Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
+        
       }
       Serial.println("-");
     }
@@ -194,7 +203,7 @@ void gpsInitialize(){
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // 1 Hz update rate
   // For the parsing code to work nicely and have time to sort thru the data, and
   // print it out we don't suggest using anything higher than 1 Hz
-     
+
   // Request updates on antenna status, comment out to keep quiet
   GPS.sendCommand(PGCMD_ANTENNA);
 
