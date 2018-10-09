@@ -11,11 +11,9 @@
 #define RFM69_CS      6
 #define RFM69_INT     11
 #define RFM69_RST     12
-#define PACKET_LEN    24    // Size of packet to send via RF
+#define PACKET_LEN    24    // Expected packet size
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
-
-int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 /*
  * SETUP
@@ -39,10 +37,9 @@ void setup() {
  */
 void loop() {
   // Should be a message for us now   
-    uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
+  uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+  uint8_t len = sizeof(buf);
   if (rf69.available() && rf69.recv(buf, &len)) {
-    
     if (!len) return;
 
     // blink LED to show activity
@@ -50,12 +47,12 @@ void loop() {
 
     Serial.print("Received ["); 
     Serial.print(len); 
-    Serial.print("] @RSSI {");
+    Serial.print("] @RSSI ");
     Serial.print(rf69.lastRssi(), DEC);
 
-    Serial.print(", "); 
+    Serial.print("{"); 
     for (int i = 0; i < PACKET_LEN; i++) {
-      Serial.print(buf[i]); Serial.print(' ');
+      Serial.print(' '); Serial.print(buf[i]); 
     }
     Serial.println("}");
 
