@@ -5,65 +5,49 @@
 
 #include <Adafruit_GPS.h>
 #include <SPI.h>
+#include <SD.h>
 #include <RH_RF69.h>
 #include "wiring_private.h" // pinPeripheral() function
 
-#define HEADLESS false
-#define WAIT false
-#define UPDATE_FREQ 1
+#include "config.h"
+//#include "radioEncode.h"
 
-// Serial port pinmux for GPS comms
-#define PIN_SERIAL2_RX       (34ul)               // Pin description number for PIO_SERCOM on D12
-#define PIN_SERIAL2_TX       (36ul)               // Pin description number for PIO_SERCOM on D10
-#define PAD_SERIAL2_TX       (UART_TX_PAD_2)      // SERCOM pad 2
-#define PAD_SERIAL2_RX       (SERCOM_RX_PAD_3)    // SERCOM pad 3
-
-// RFM69HCW Radio config
-#define RF69_FREQ     915.0
-#define RFM69_CS      6
-#define RFM69_INT     11
-#define RFM69_RST     5
-#define PACKET_LEN    24    // Size of packet to send via RF
-
-// echo the GPS data to the Serial console?
-#define GPSECHO false
-
-// define serial port
-Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
-#define GPSSerial Serial2
-
-// Connect to the GPS on the hardware serial port
-Adafruit_GPS GPS(&GPSSerial);
-
+// Radio 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
-int16_t packetnum = 0;  // packet counter, we increment per xmission
-uint32_t timer = millis();
-
+// define the GPS's hardware serial port
+Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
 // Interrupt handler for Serial2
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
+#define GPSSerial Serial2
+Adafruit_GPS GPS(&GPSSerial); // Init the GPS handler object with the assigned serial port
+
+// Data logging SD card configuration
+Sd2Card card;
+SdVolume volume;
+SdFile root;
+bool card_available = false;
+
+uint32_t timer = millis();
 
 /*
  * SETUP method for Arduino
  */
 void setup() {
+  // Set IO pin modes
   pinMode(LED_BUILTIN, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
-  
-  digitalWrite(RFM69_RST, HIGH); // Perform a reset on the radio
-  delay(10);
-  digitalWrite(RFM69_RST, LOW);
-  delay(10);
-  
+  // Assign pins to SERCOM functionality
+  pinPeripheral(PIN_SERIAL2_TX, PIO_SERCOM);
+  pinPeripheral(PIN_SERIAL2_RX, PIO_SERCOM);
+
+  if (!HEADLESS) {
+    if (WAIT) while (!Serial);  // hold the system hostage until it's time to start
+    Serial.begin(115200); // talk to the host at a brisk rate, so we have time to write without dropping chars
+    Serial.println("Let's Start!");
+  }
   rfInitialize();
   gpsInitialize();
-
-  if (WAIT) {
-  while (!Serial);  //wait until host Serial is ready
-    Serial.begin(115200); // talk to the host at a brisk rate, so we have time to write without dropping chars
-    Serial.println("Adafruit GPS library basic test!");
-    Serial.println("Waiting for GPS serial...");
-  }
 }
 
 /*
@@ -86,6 +70,7 @@ void loop() {
   if (millis() - timer > UPDATE_FREQ * 1000) {
 
     uint8_t radiopacket[PACKET_LEN];
+    // encode_packet(&radiopacket);
     radiopacket[0] = GPS.fix;
     radiopacket[1] = GPS.fixquality;
     radiopacket[2] = GPS.satellites;
@@ -186,10 +171,10 @@ void blink(int pin, int count, int wait) {
 
 // GPS Initialize Method
 void gpsInitialize(){
-  while (!Serial2);  // wait for GPS serial
+  if (!HEADLESS) Serial.print("Waiting for GPS serial... ");
+  while (!Serial2);  // hold the system until GPS serial port is ready
   if (!HEADLESS) Serial.println("It's up!");
   GPS.begin(9600);  // 9600 NMEA is the default baud rate for Adafruit MTK GPS
-  
   
   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
@@ -204,36 +189,49 @@ void gpsInitialize(){
   // For the parsing code to work nicely and have time to sort thru the data, and
   // print it out we don't suggest using anything higher than 1 Hz
 
-  // Request updates on antenna status, comment out to keep quiet
+  // Request updates on antenna status too
   GPS.sendCommand(PGCMD_ANTENNA);
 
-  delay(1000); // Wait a second for the GPS to be ready for us
+  delay(1000); // Wait a full second (!) for the GPS to be ready for us
   GPSSerial.println(PMTK_Q_RELEASE);
 }
 
 // RF69 Initialize Method
 void rfInitialize(){
-  if (!HEADLESS & !rf69.init()) {
-    Serial.println("RFM69 radio init failed");
+  if (!HEADLESS) Serial.print("Resetting Radio... ");
+  digitalWrite(RFM69_RST, LOW);
+  delay(10);
+  digitalWrite(RFM69_RST, HIGH);
+  delay(10);
+  digitalWrite(RFM69_RST, LOW);
+  delay(10);
+  if (!rf69.init()) {
+    if (!HEADLESS) Serial.println("RFM69 radio init failed!");
     while (1); // halt
   }
+  
   if (!HEADLESS) Serial.println("RFM69 radio init OK!");
-  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
-  // No encryption
+  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module) and no encryption.
   if (!rf69.setFrequency(RF69_FREQ)) {
     if (!HEADLESS) Serial.println("setFrequency failed");
+    while (1); // halt
   }
 
   rf69.setTxPower(20, true);  // set broadcast power (valid range 14-20), 2nd arg always true for 69HCW
 
   // The encryption key has to be the same as the one in the receiver
-  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
   rf69.setEncryptionKey(key);
 
   if (!HEADLESS) { Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz"); }
-  
-  // Assign pins to SERCOM functionality
-  pinPeripheral(PIN_SERIAL2_TX, PIO_SERCOM);
-  pinPeripheral(PIN_SERIAL2_RX, PIO_SERCOM);
+}
+
+// Set up the SD card and log file
+bool sdInitialize(size_t CSpin) {
+  if (!card.init()) {
+    if (!HEADLESS) Serial.println("SD card initialization failed. Logging Disabled.");
+  } else {
+    if (!HEADLESS) Serial.println("SD Card detected and writable. Logging Enabled.");
+    card_available = true;
+  }
 }
