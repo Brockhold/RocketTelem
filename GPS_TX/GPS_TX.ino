@@ -10,24 +10,7 @@
 #include "wiring_private.h" // pinPeripheral() function
 
 #include "config.h"
-//#include "radioEncode.h"
-
-
-
-struct statusStruct {
-  boolean fix;
-  char lat, lon, mag;
-  uint8_t fixquality, satellites, hour, minute, seconds, year, month, day;
-  uint16_t milliseconds;
-  int32_t latitude_fixed, longitude_fixed;
-  
-} statusStruct;
-
-
-
-
-
-
+#include "radioEncode.h"
 
 // Radio 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
@@ -87,24 +70,9 @@ void loop() {
   if (millis() - timer > UPDATE_FREQ * 1000) {
 
     struct statusStruct radioPacket;
-    statusStruct.fix = GPS.fix;
-    
-    statusStruct.lat = GPS.lat;
-    statusStruct.lon = GPS.lon;
-    statusStruct.mag = GPS.mag;
-    statusStruct.fixquality = GPS.fixquality;
-    statusStruct.satellites = GPS.satellites;
-    statusStruct.hour = GPS.hour;
-    statusStruct.minute = GPS.minute;
-    statusStruct.seconds = GPS.seconds;
-    statusStruct.year = GPS.year;
-    statusStruct.month = GPS.month;
-    statusStruct.day = GPS.day;
-    statusStruct.milliseconds = GPS.milliseconds;
-    statusStruct.latitude_fixed = GPS.latitude_fixed;
-    statusStruct.longitude_fixed = GPS.longitude_fixed;
-    
     struct statusStruct* packetPtr = &radioPacket;
+    Adafruit_GPS* gpsPtr = &GPS;
+    buildPacket(gpsPtr, packetPtr);
     
     // Send data to RF
     rf69.send((uint8_t*)packetPtr, sizeof(radioPacket));

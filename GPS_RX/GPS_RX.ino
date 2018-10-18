@@ -6,12 +6,9 @@
 #include <SPI.h>
 #include <RH_RF69.h>
 
-/************ Radio Setup ***************/
-#define RF69_FREQ 915.0
-#define RFM69_CS      6
-#define RFM69_INT     11
-#define RFM69_RST     12
-#define PACKET_LEN    24    // Expected packet size
+#include "config.h"
+#include "radioDecode.h"
+
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
@@ -36,10 +33,12 @@ void setup() {
  * Program Loop
  */
 void loop() {
-  // Should be a message for us now   
-  uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-  if (rf69.available() && rf69.recv(buf, &len)) {
+  
+  struct statusStruct radioPacket;
+  struct statusStruct* packetPtr = &radioPacket;
+  
+  uint8_t len = sizeof(radioPacket);
+  if (rf69.available() && rf69.recv((uint8_t *)packetPtr, &len)) {
     if (!len) return;
 
     // blink LED to show activity
@@ -51,42 +50,38 @@ void loop() {
     Serial.print(rf69.lastRssi(), DEC);
 
     Serial.print("{"); 
-    for (int i = 0; i < PACKET_LEN; i++) {
-      Serial.print(' '); Serial.print(buf[i]); 
-    }
+//    for (int i = 0; i < len; i++) {
+//      Serial.print(' '); Serial.print(radioPacket[i]); 
+//    }
     Serial.println("}");
 
     Serial.print("Time: "); // Hour:Minute:Second
-    Serial.print(buf[6]); Serial.print(":");
-    Serial.print(buf[7]); Serial.print(":");
-    Serial.println(buf[8]);
+    Serial.print(radioPacket.hour); Serial.print(":");
+    Serial.print(radioPacket.minute); Serial.print(":");
+    Serial.println(radioPacket.seconds);
 
     Serial.print("Date: "); // Year/Month/Day
-    Serial.print(buf[3]); Serial.print("/");
-    Serial.print(buf[4]); Serial.print("/");
-    Serial.println(buf[5]);
+    Serial.print(radioPacket.year); Serial.print("/");
+    Serial.print(radioPacket.month); Serial.print("/");
+    Serial.println(radioPacket.day);
 
     // GPS reception status
-    Serial.print("Fix: "); Serial.print((buf[0] == 1)?"Yes":"No");
-    Serial.print(", Quality: "); Serial.print(buf[1]);
-    Serial.print(", Satellites: "); Serial.println(buf[2]);
+    Serial.print("Fix: "); Serial.print(radioPacket.fix?"Yes":"No");
+    Serial.print(", Quality: "); Serial.print(radioPacket.fixquality);
+    Serial.print(", Satellites: "); Serial.println(radioPacket.satellites);
 
     // If there is a GPS fix, print the reported Lat & Ln
-    if (buf[0] == 1) {
-      // Fixed decimal representation of the lat and lon, in 1/100000 degrees
-      uint32_t lat_fixed = buf[9] *10000000 + buf[10] * 100000 + buf[11] * 1000 + buf[12] * 10 + buf[13];
-      uint32_t lon_fixed = buf[14]*10000000 + buf[15] * 100000 + buf[16] * 1000 + buf[17] * 10 + buf[18];
-      
+    if (radioPacket.fix) {
       Serial.print("Location: ");
-      if ((char) buf[19] == 'S') Serial.print("-");
-      Serial.print(lat_fixed/10000000); Serial.print("."); Serial.print(lat_fixed % 10000000);
+      if ((char) radioPacket.lat == 'S') Serial.print("-");
+      Serial.print(radioPacket.latitude_fixed/10000000); Serial.print("."); Serial.print(radioPacket.latitude_fixed % 10000000);
       Serial.print(", ");
-      if ((char) buf[20] == 'W') Serial.print("-");
-      Serial.print(lon_fixed/10000000); Serial.print("."); Serial.println(lon_fixed % 10000000);
+      if ((char) radioPacket.lon == 'W') Serial.print("-");
+      Serial.print(radioPacket.longitude_fixed/10000000); Serial.print("."); Serial.println(radioPacket.longitude_fixed % 10000000);
       
-      Serial.print("Speed (knots): "); Serial.print(buf[21]);
-      Serial.print(", Angle: "); Serial.print(buf[22]);
-      Serial.print(", Altitude: "); Serial.println(buf[23]);
+      Serial.print("Speed (knots): "); Serial.print(radioPacket.speed);
+      Serial.print(", Angle: "); Serial.print(radioPacket.angle);
+      Serial.print(", Altitude: "); Serial.println(radioPacket.altitude);
     }
     Serial.println("-");
   }
