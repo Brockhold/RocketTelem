@@ -18,7 +18,6 @@
 #define RFM69_CS      6                           // chip select on pin D6
 #define RFM69_INT     11                          // data ready interrupt on pin D11
 #define RFM69_RST     5                           // radio soft-reset on pin D24
-#define PACKET_LEN    24                          // Size of packet to send via RF
 
 // SD card configuration
 #define SD_CS 4                                   // chip select on pin D4

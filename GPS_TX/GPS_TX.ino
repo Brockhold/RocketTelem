@@ -12,6 +12,23 @@
 #include "config.h"
 //#include "radioEncode.h"
 
+
+
+struct statusStruct {
+  boolean fix;
+  char lat, lon, mag;
+  uint8_t fixquality, satellites, hour, minute, seconds, year, month, day;
+  uint16_t milliseconds;
+  int32_t latitude_fixed, longitude_fixed;
+  
+} statusStruct;
+
+
+
+
+
+
+
 // Radio 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
@@ -69,35 +86,28 @@ void loop() {
   // wait around for the update time
   if (millis() - timer > UPDATE_FREQ * 1000) {
 
-    uint8_t radiopacket[PACKET_LEN];
-    // encode_packet(&radiopacket);
-    radiopacket[0] = GPS.fix;
-    radiopacket[1] = GPS.fixquality;
-    radiopacket[2] = GPS.satellites;
-    radiopacket[3] = GPS.year;
-    radiopacket[4] = GPS.month;
-    radiopacket[5] = GPS.day;
-    radiopacket[6] = GPS.hour;
-    radiopacket[7] = GPS.minute;
-    radiopacket[8] = GPS.seconds;
-    radiopacket[9] = GPS.latitude_fixed / 10000000;
-    radiopacket[10] = GPS.latitude_fixed / 100000 % 100;
-    radiopacket[11] = GPS.latitude_fixed / 1000 % 100;
-    radiopacket[12] = GPS.latitude_fixed / 10 % 100;
-    radiopacket[13] = GPS.latitude_fixed % 10;
-    radiopacket[14] = GPS.longitude_fixed / 10000000;
-    radiopacket[15] = GPS.longitude_fixed / 100000 % 100;
-    radiopacket[16] = GPS.longitude_fixed / 1000 % 100;
-    radiopacket[17] = GPS.longitude_fixed / 10 % 100;
-    radiopacket[18] = GPS.longitude_fixed % 10;
-    radiopacket[19] = GPS.lat;
-    radiopacket[20] = GPS.lon;
-    radiopacket[21] = GPS.speed;
-    radiopacket[22] = GPS.angle;
-    radiopacket[23] = GPS.altitude;
-
+    struct statusStruct radioPacket;
+    statusStruct.fix = GPS.fix;
+    
+    statusStruct.lat = GPS.lat;
+    statusStruct.lon = GPS.lon;
+    statusStruct.mag = GPS.mag;
+    statusStruct.fixquality = GPS.fixquality;
+    statusStruct.satellites = GPS.satellites;
+    statusStruct.hour = GPS.hour;
+    statusStruct.minute = GPS.minute;
+    statusStruct.seconds = GPS.seconds;
+    statusStruct.year = GPS.year;
+    statusStruct.month = GPS.month;
+    statusStruct.day = GPS.day;
+    statusStruct.milliseconds = GPS.milliseconds;
+    statusStruct.latitude_fixed = GPS.latitude_fixed;
+    statusStruct.longitude_fixed = GPS.longitude_fixed;
+    
+    struct statusStruct* packetPtr = &radioPacket;
+    
     // Send data to RF
-    rf69.send(radiopacket, PACKET_LEN);
+    rf69.send((uint8_t*)packetPtr, sizeof(radioPacket));
     rf69.waitPacketSent();
 
     // blink LED to show activity
@@ -105,8 +115,8 @@ void loop() {
 
     if(!HEADLESS){
       Serial.print("Packet {"); 
-      for (int i = 0; i < PACKET_LEN; i++) {
-        Serial.print(radiopacket[i]); Serial.print(' ');
+      for (int i = 0; i < sizeof(radioPacket); i++) {
+        Serial.print(((uint8_t *)packetPtr)[i]); Serial.print(' ');
       }
       Serial.println("}"); 
     }
