@@ -16,9 +16,9 @@ struct statusStruct {
   // 24 bytes
   
   // accelerometer X Y Z
-  uint16_t pitch;
-  uint16_t roll;
-  uint16_t heading;
+  uint16_t pitch; //
+  uint16_t roll;  //
+  uint16_t heading; //
   // 30 bytes
   
   // Compass heading

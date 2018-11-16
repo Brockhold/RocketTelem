@@ -78,11 +78,17 @@ void loop() {
       Serial.print(", ");
       if ((char) radioPacket.lon == 'W') Serial.print("-");
       Serial.print(radioPacket.longitude_fixed/10000000); Serial.print("."); Serial.println(radioPacket.longitude_fixed % 10000000);
-      
-
-
-
     }
+    
+    Serial.print("Temperature (C): "); Serial.println(radioPacket.temperature);
+    Serial.print("Accelerometer {"); 
+      Serial.print(" Pitch: "); Serial.print(radioPacket.pitch); 
+      Serial.print(" Roll: "); Serial.print(radioPacket.roll);
+      Serial.print(" Heading: "); Serial.print(radioPacket.heading);
+      Serial.println(" }");
+    Serial.print("Compass Heading: "); Serial.println(radioPacket.mag_heading);
+    Serial.print("Altitude: "); Serial.println(radioPacket.bar_alt);
+
     Serial.println("-");
   }
 }
