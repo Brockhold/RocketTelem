@@ -18,6 +18,7 @@ struct statusStruct {
 
   // Compass heading
 
+  // barometric altitude (space allowing)
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;

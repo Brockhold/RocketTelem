@@ -234,6 +234,11 @@ void rfInitialize(){
   if (!HEADLESS) { Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz"); }
 }
 
+
+void initSensors() {
+  
+}
+
 // Set up the SD card and log file
 bool sdInitialize(size_t CSpin) {
   if (!card.init()) {
