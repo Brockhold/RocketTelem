@@ -16,19 +16,15 @@ struct statusStruct {
   int16_t temperature;
   // 24 bytes
   
-  // accelerometer X Y Z
+  // accelerometer& magnetometer X Y Z
   uint16_t pitch;
   uint16_t roll;
   uint16_t heading;
   // 30 bytes
   
-  // Compass heading
-  uint16_t mag_heading;
-  // 32 bytes
-  
-  // barometric altitude (space allowing)
+  // barometric altitude
   int16_t bar_alt;
-  // 34 bytes
+  // 32 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -36,7 +32,7 @@ struct statusStruct {
 
 typedef struct statusStruct StatusStruct;
 
-void buildPacket(Adafruit_GPS* GPS, StatusStruct* ss) {
+void buildPacket(sensors_vec_t &orientation, int16_t altitude, int16_t &temperature, Adafruit_GPS* GPS, StatusStruct* ss) {
   ss->fix = GPS->fix;
   ss->lat = GPS->lat;
   ss->lon = GPS->lon;
@@ -52,6 +48,16 @@ void buildPacket(Adafruit_GPS* GPS, StatusStruct* ss) {
   ss->milliseconds = GPS->milliseconds;
   ss->latitude_fixed = GPS->latitude_fixed;
   ss->longitude_fixed = GPS->longitude_fixed;
+
+  ss->temperature = temperature;
+  ss->pitch = orientation.pitch;
+  ss->roll = orientation.roll;
+  ss->heading = orientation.heading;
+  ss->bar_alt = altitude;
+
+
+
+  
   //ss->latitudeDegrees = GPS->latitudeDegrees;
   //ss->longitudeDegrees = GPS->longitudeDegrees;
   //ss->geoidheight = GPS->geoidheight;

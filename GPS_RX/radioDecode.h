@@ -15,19 +15,15 @@ struct statusStruct {
   int16_t temperature;
   // 24 bytes
   
-  // accelerometer X Y Z
-  uint16_t pitch; //
-  uint16_t roll;  //
-  uint16_t heading; //
+  // accelerometer& magnetometer X Y Z
+  uint16_t pitch;
+  uint16_t roll;
+  uint16_t heading;
   // 30 bytes
   
-  // Compass heading
-  uint16_t mag_heading;
-  // 32 bytes
-  
-  // barometric altitude (space allowing)
+  // barometric altitude
   int16_t bar_alt;
-  // 34 bytes;
+  // 32 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
