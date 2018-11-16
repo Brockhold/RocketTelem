@@ -234,7 +234,7 @@ void rfInitialize(){
   if (!HEADLESS) { Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz"); }
 }
 
-// start up the 10-dof sensors
+// start up the 10-dof sensors 
 void initSensors() {
   if (!accel.begin() || !mag.begin() || !bmp.begin()) {
     if (!HEADLESS) Serial.println("unable to init sensors! Halted");
