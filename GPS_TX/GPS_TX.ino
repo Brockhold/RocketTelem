@@ -95,14 +95,32 @@ void loop() {
     sensors_event_t accel_event;
     sensors_event_t mag_event;
     sensors_event_t bmp_event;
-    sensors_vec_t   orientation;
+    sensors_vec_t   orientation; // vector of floats for pitch/roll/heading
 
+    // get sensor events
+    accel.getEvent(&accel_event);
+    mag.getEvent(&mag_event);
+    bmp.getEvent(&bmp_event);
+
+    // fill out the orientation vector struct (floats) with accel data
+    dof.accelGetOrientation(&accel_event, &orientation);
+
+    // add magnetic heading to orientation struct
+    dof.magGetOrientation(SENSOR_AXIS_Z, &mag_event, &orientation);
     
-    
+    // get temperature as a float and then force into integer representaton
+    float temp_float;
+    bmp.getTemperature(&temp_float);
+    int16_t temp_int = temp_float;
+
+    // get barometric pressure and convert to altitude
+    int16_t altitude_int = bmp.pressureToAltitude(SENSORS_PRESSURE_SEALEVELHPA, bmp_event.pressure, temp_float);
+
+    // take all those structures and copy their values into the radio packet struct
     struct statusStruct radioPacket;
     struct statusStruct* packetPtr = &radioPacket;
     Adafruit_GPS* gpsPtr = &GPS;
-    buildPacket(gpsPtr, packetPtr);
+    buildPacket(orientation, altitude_int, temp_int, gpsPtr, packetPtr);
     
     // Send data to RF
     rf69.send((uint8_t*)packetPtr, sizeof(radioPacket));
@@ -119,50 +137,52 @@ void loop() {
       Serial.println("}"); 
     }
     
-    outputToSerial();
+    outputToSerial(packetPtr);
     
     timer = millis(); // reset the timer
   }
 }
 
 // Output to serial if HEADLESS is false
-void outputToSerial(){
+void outputToSerial(StatusStruct* message){
   if (!HEADLESS) {
       Serial.print("Time: ");
-      Serial.print(GPS.hour, DEC); Serial.print(':');
-      Serial.print(GPS.minute, DEC); Serial.print(':');
-      Serial.print(GPS.seconds, DEC); Serial.print('.');
-      Serial.println(GPS.milliseconds);
+      Serial.print(message->hour, DEC); Serial.print(':');
+      Serial.print(message->minute, DEC); Serial.print(':');
+      Serial.println(message->seconds, DEC);
+      
       Serial.print("Date: ");
+      Serial.print(message->year, DEC); Serial.print("/");
+      Serial.print(message->month, DEC); Serial.print('/');
+      Serial.println(message->day, DEC);
       
-      Serial.print(GPS.year, DEC); Serial.print("/");
-      Serial.print(GPS.month, DEC); Serial.print('/');
-      Serial.println(GPS.day, DEC);
-      
-      Serial.print("Fix: "); Serial.print((int)GPS.fix);
-      Serial.print(" quality: "); Serial.print((int)GPS.fixquality);
-      Serial.print(", Satellites: "); Serial.println((int)GPS.satellites);
-      if (GPS.fix) {
-        //Serial.println(GPS.latitude_fixed);
-        //Serial.println(GPS.longitude_fixed);
+      Serial.print("Fix: "); Serial.print(message->fix);
+      Serial.print(" quality: "); Serial.print(message->fixquality);
+      Serial.print(", Satellites: "); Serial.println(message->satellites);
+      if (message->fix > 0) {
         // Pull out the whole and decimal components of the lat and long for display
-        int latWhole = GPS.latitude_fixed / 10000000;
-        int latDec = GPS.latitude_fixed % 10000000;
-        int lonWhole = GPS.longitude_fixed / 10000000;
-        int lonDec = GPS.longitude_fixed % 10000000;
+        int latWhole = message->latitude_fixed / 10000000;
+        int latDec = message->latitude_fixed % 10000000;
+        int lonWhole = message->longitude_fixed / 10000000;
+        int lonDec = message->longitude_fixed % 10000000;
         
         Serial.print("Location: ");
-        if(GPS.lat == 'S') Serial.print("-");
+        if(message->lat == 'S') Serial.print("-");
         Serial.print(latWhole); Serial.print("."); Serial.print(latDec);
         Serial.print(", ");
-        if(GPS.lon == 'W') Serial.print("-");
+        if(message->lon == 'W') Serial.print("-");
         Serial.print(lonWhole); Serial.print("."); Serial.println(lonDec);
-        
-        Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-        Serial.print("Angle: "); Serial.println(GPS.angle);
-        Serial.print("Altitude: "); Serial.println(GPS.altitude);
-        
       }
+      
+      // printouts for temperature & altitude
+      Serial.print("Temperature: "); Serial.print(message->temperature); Serial.print("ºC\t");
+      Serial.print("Baro Alt: "); Serial.print(message->bar_alt); Serial.println("m");
+      // printouts for pitch/roll/heading
+      Serial.print("Pitch/Roll/Heading: "); 
+      Serial.print(message->pitch); Serial.print("/");
+      Serial.print(message->roll); Serial.print("/");
+      Serial.println(message->heading);
+      
       Serial.println("-");
     }
 }
