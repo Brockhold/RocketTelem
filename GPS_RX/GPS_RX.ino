@@ -79,9 +79,9 @@ void loop() {
       if ((char) radioPacket.lon == 'W') Serial.print("-");
       Serial.print(radioPacket.longitude_fixed/10000000); Serial.print("."); Serial.println(radioPacket.longitude_fixed % 10000000);
       
-      Serial.print("Speed (knots): "); Serial.print(radioPacket.speed);
-      Serial.print(", Angle: "); Serial.print(radioPacket.angle);
-      Serial.print(", Altitude: "); Serial.println(radioPacket.altitude);
+
+
+
     }
     Serial.println("-");
   }
