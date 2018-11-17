@@ -49,7 +49,7 @@ bool card_available = false;
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 // This timer is used in the loop() method to service the sensor checking
-uint32_t timer = millis();
+unsigned long timer = millis();
 
 /*
  * SETUP method for Arduino
@@ -79,18 +79,20 @@ void setup() {
 void loop() {
   
   // pull a chars one at a time from the GPS
-  char c = GPS.read();
+  GPS.read();
   
   // if a sentence is received, we can check the checksum, parse it...
   if (GPS.newNMEAreceived()) {
     if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
       return; // we can fail to parse; wait for another message
   }
+  
   // if millis() or timer wraps around, we'll reset it
   if (timer > millis()) timer = millis();
 
   // wait around for the sensor update time
-  if (millis() - timer > UPDATE_FREQ * 1000) {
+  if (millis() - timer >= updateFrequency) {
+    
     // Event structures for each sensor
     sensors_event_t accel_event;
     sensors_event_t mag_event;
@@ -118,29 +120,47 @@ void loop() {
 
     // take all those structures and copy their values into the radio packet struct
     struct statusStruct radioPacket;
-    struct statusStruct* packetPtr = &radioPacket;
+    
     Adafruit_GPS* gpsPtr = &GPS;
-    buildPacket(orientation, altitude_int, temp_int, gpsPtr, packetPtr);
+    buildPacket(orientation, altitude_int, temp_int, gpsPtr, &radioPacket);
     
     // Send data to RF
-    rf69.send((uint8_t*)packetPtr, sizeof(radioPacket));
+    rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
     rf69.waitPacketSent();
 
     // blink LED to show activity
     blink(LED_BUILTIN, 1, 50);
 
-    if(!HEADLESS){
+#if !HEADLESS
+
       Serial.print("Packet {"); 
       for (int i = 0; i < sizeof(radioPacket); i++) {
-        Serial.print(((uint8_t *)packetPtr)[i]); Serial.print(' ');
+        Serial.print(((uint8_t *)&radioPacket)[i]); Serial.print(' ');
       }
       Serial.println("}"); 
-    }
+      
+#endif
     
-    outputToSerial(packetPtr);
+    outputToSerial(&radioPacket);
     
     timer = millis(); // reset the timer
   }
+
+  unsigned int pollingRate;
+  uint8_t len = sizeof(pollingRate);
+
+  // check to see if the receiver sent a new poll rate
+  if(rf69.available() && rf69.recv((uint8_t *)&pollingRate, &len)){
+#if !HEADLESS
+    Serial.print("Received [");
+    Serial.print(len);
+    Serial.print("] Value: ");
+    Serial.println(pollingRate);
+#endif
+    // Constrain the value
+    updateFrequency = constrain(pollingRate, 100, 10000);
+  }
+  
 }
 
 // Output to serial if HEADLESS is false

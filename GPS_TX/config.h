@@ -1,10 +1,10 @@
 // User interaction options
 // In headless mode, nothing is written to Serial0 (USB serial)
-#define HEADLESS false
+#define HEADLESS true
 // In wait is enabled, the system will halt until Serial0 connects.
 #define WAIT true
 // Default polling rate (should be eventually replaced with dynamic polling rate variable)
-#define UPDATE_FREQ 1
+unsigned int updateFrequency = 1000;
 
 // Serial port pinmux for GPS comms, allows for multiple hardware-accelerated serial ports via SERCOM
 #define PIN_SERIAL2_RX       (34ul)               // Pin description number for PIO_SERCOM on D12

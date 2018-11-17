@@ -33,12 +33,13 @@ void setup() {
  * Program Loop
  */
 void loop() {
+
+  readInput();
   
   struct statusStruct radioPacket;
-  struct statusStruct* packetPtr = &radioPacket;
   
   uint8_t len = sizeof(radioPacket);
-  if (rf69.available() && rf69.recv((uint8_t *)packetPtr, &len)) {
+  if (rf69.available() && rf69.recv((uint8_t *)&radioPacket, &len)) {
     if (!len) return;
 
     // blink LED to show activity
@@ -49,47 +50,8 @@ void loop() {
     Serial.print("] @RSSI ");
     Serial.print(rf69.lastRssi(), DEC);
 
-    Serial.print("{"); 
-//    for (int i = 0; i < len; i++) {
-//      Serial.print(' '); Serial.print(radioPacket[i]); 
-//    }
-    Serial.println("}");
+    displayPacketData(radioPacket);
 
-    Serial.print("Time: "); // Hour:Minute:Second
-    Serial.print(radioPacket.hour); Serial.print(":");
-    Serial.print(radioPacket.minute); Serial.print(":");
-    Serial.println(radioPacket.seconds);
-
-    Serial.print("Date: "); // Year/Month/Day
-    Serial.print(radioPacket.year); Serial.print("/");
-    Serial.print(radioPacket.month); Serial.print("/");
-    Serial.println(radioPacket.day);
-
-    // GPS reception status
-    Serial.print("Fix: "); Serial.print(radioPacket.fix?"Yes":"No");
-    Serial.print(", Quality: "); Serial.print(radioPacket.fixquality);
-    Serial.print(", Satellites: "); Serial.println(radioPacket.satellites);
-
-    // If there is a GPS fix, print the reported Lat & Ln
-    if (radioPacket.fix) {
-      Serial.print("Location: ");
-      if ((char) radioPacket.lat == 'S') Serial.print("-");
-      Serial.print(radioPacket.latitude_fixed/10000000); Serial.print("."); Serial.print(radioPacket.latitude_fixed % 10000000);
-      Serial.print(", ");
-      if ((char) radioPacket.lon == 'W') Serial.print("-");
-      Serial.print(radioPacket.longitude_fixed/10000000); Serial.print("."); Serial.println(radioPacket.longitude_fixed % 10000000);
-    }
-    
-    Serial.print("Temperature (C): "); Serial.println(radioPacket.temperature);
-    Serial.print("Accelerometer {"); 
-      Serial.print(" Pitch: "); Serial.print(radioPacket.pitch); 
-      Serial.print(" Roll: "); Serial.print(radioPacket.roll);
-      Serial.print(" Heading: "); Serial.print(radioPacket.heading);
-      Serial.println(" }");
-    Serial.print("Compass Heading: "); Serial.println(radioPacket.mag_heading);
-    Serial.print("Altitude: "); Serial.println(radioPacket.bar_alt);
-
-    Serial.println("-");
   }
 }
 
@@ -136,3 +98,74 @@ void blink(int pin, int count, int wait) {
     delay(wait);
   }
 }
+
+/**
+ * Reads integer from Serial to set polling rate on TX
+ */
+void readInput(){
+  //enter 0 for on-demand mode. press enter to receive data
+  //enter 1 to enable periodical
+  if(Serial.available() > 0){
+    unsigned int pollingRate = Serial.parseInt();
+    
+    // clears out buffer for next read
+    while(Serial.available() > 0){
+      Serial.read();
+    }
+    // Send data to RF
+    rf69.send((uint8_t *)&pollingRate, sizeof(pollingRate));
+    rf69.waitPacketSent();
+  }
+}
+
+/**
+ * Sends received packet data to Serial
+ */
+void displayPacketData(statusStruct &packet){
+
+#if DEBUG
+
+      Serial.print("Raw Packet Data = {"); 
+      for (int i = 0; i < sizeof(packet); i++) {
+        Serial.print(' '); Serial.print(((uint8_t *)&packet)[i]); 
+      }
+      Serial.println("}");
+
+#endif
+
+   Serial.print("Time: "); // Hour:Minute:Second
+    Serial.print(packet.hour); Serial.print(":");
+    Serial.print(packet.minute); Serial.print(":");
+    Serial.println(packet.seconds);
+
+    Serial.print("Date: "); // Year/Month/Day
+    Serial.print(packet.year); Serial.print("/");
+    Serial.print(packet.month); Serial.print("/");
+    Serial.println(packet.day);
+
+    // GPS reception status
+    Serial.print("Fix: "); Serial.print(packet.fix?"Yes":"No");
+    Serial.print(", Quality: "); Serial.print(packet.fixquality);
+    Serial.print(", Satellites: "); Serial.println(packet.satellites);
+
+    // If there is a GPS fix, print the reported Lat & Ln
+    if (packet.fix) {
+      Serial.print("Location: ");
+      if ((char) packet.lat == 'S') Serial.print("-");
+      Serial.print(packet.latitude_fixed/10000000); Serial.print("."); Serial.print(packet.latitude_fixed % 10000000);
+      Serial.print(", ");
+      if ((char) packet.lon == 'W') Serial.print("-");
+      Serial.print(packet.longitude_fixed/10000000); Serial.print("."); Serial.println(packet.longitude_fixed % 10000000);
+    }
+    
+    Serial.print("Temperature (C): "); Serial.println(packet.temperature);
+    Serial.print("Accelerometer {"); 
+      Serial.print(" Pitch: "); Serial.print(packet.pitch); 
+      Serial.print(" Roll: "); Serial.print(packet.roll);
+      Serial.print(" Heading: "); Serial.print(packet.heading);
+      Serial.println(" }");
+    //Serial.print("Compass Heading: "); Serial.println(packet.mag_heading);
+    Serial.print("Altitude: "); Serial.println(packet.bar_alt);
+
+    Serial.println("-");
+ }
