@@ -1,23 +1,9 @@
 /*
  * Sketch for transmitting sensor data via radio.
  * Designed to run on an Adafruit M0.
- * See config.h for a list of pins connected to hardware.
+ * See config.h for a list of pins connected to hardware and
+ * a list of all necessary Arduino libraries.
  */
-
-// Built in Arduino libraries
-#include <SPI.h>
-#include <SD.h>
-#include <Wire.h>
-#include "wiring_private.h" // access to private pinPeripheral() function
-
-// External libraries (all available via library manager as of 10/18)
-#include <Adafruit_GPS.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_LSM303_U.h>
-#include <Adafruit_BMP085_U.h>
-#include <Adafruit_L3GD20_U.h>
-#include <Adafruit_10DOF.h>
-#include <RH_RF69.h>
 
 // Configuration files and helper methods
 #include "config.h"
@@ -93,36 +79,8 @@ void loop() {
   // wait around for the sensor update time
   if (millis() - timer >= updateFrequency) {
     
-    // Event structures for each sensor
-    sensors_event_t accel_event;
-    sensors_event_t mag_event;
-    sensors_event_t bmp_event;
-    sensors_vec_t   orientation; // vector of floats for pitch/roll/heading
-
-    // get sensor events
-    accel.getEvent(&accel_event);
-    mag.getEvent(&mag_event);
-    bmp.getEvent(&bmp_event);
-
-    // fill out the orientation vector struct (floats) with accel data
-    dof.accelGetOrientation(&accel_event, &orientation);
-
-    // add magnetic heading to orientation struct
-    dof.magGetOrientation(SENSOR_AXIS_Z, &mag_event, &orientation);
-    
-    // get temperature as a float and then force into integer representaton
-    float temp_float;
-    bmp.getTemperature(&temp_float);
-    int16_t temp_int = temp_float;
-
-    // get barometric pressure and convert to altitude
-    int16_t altitude_int = bmp.pressureToAltitude(SENSORS_PRESSURE_SEALEVELHPA, bmp_event.pressure, temp_float);
-
-    // take all those structures and copy their values into the radio packet struct
-    struct statusStruct radioPacket;
-    
-    Adafruit_GPS* gpsPtr = &GPS;
-    buildPacket(orientation, altitude_int, temp_int, gpsPtr, &radioPacket);
+    // Build the radio packet to be sent
+    statusStruct radioPacket = getSensorData();
     
     // Send data to RF
     rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
@@ -146,26 +104,80 @@ void loop() {
     timer = millis(); // reset the timer
   }
 
+  checkPollingUpdate();
+  
+}
+
+// Gets all the sensor data and returns the struct
+// If any even continues to fail the whole program fails
+statusStruct getSensorData(){
+  // Event structures for each sensor
+    sensors_event_t accel_event;
+    sensors_event_t mag_event;
+    sensors_event_t bmp_event;
+    sensors_vec_t   orientation; // vector of floats for pitch/roll/heading
+
+    uint8_t retry = 3;
+    // these may fail...if either of them do retry
+    // get sensor events
+    while(!accel.getEvent(&accel_event)
+        || !mag.getEvent(&mag_event)
+        || !bmp.getEvent(&bmp_event)){
+          if(retry < 1){
+            exit(1); // kill the program
+          }
+          --retry;
+        }
+
+    // fill out the orientation vector struct (floats) with accel data
+    dof.accelGetOrientation(&accel_event, &orientation);
+
+    // add magnetic heading to orientation struct
+    dof.magGetOrientation(SENSOR_AXIS_Z, &mag_event, &orientation);
+    
+    // get temperature as a float and then force into integer representaton
+    float temp_float;
+    bmp.getTemperature(&temp_float);
+    int16_t temp_int = temp_float;
+
+    // get barometric pressure and convert to altitude
+    int16_t altitude_int = bmp.pressureToAltitude(SENSORS_PRESSURE_SEALEVELHPA, bmp_event.pressure, temp_float);
+
+    ++counter; // Increase message counter for tracking packets
+
+    // take all those structures and copy their values into the radio packet struct
+    return buildPacket(orientation, altitude_int, temp_int, &GPS);
+}
+
+// Checks to see if a polling packet was received.
+// updates the polling frequency based on the received
+// value. Values is in milliseconds and contrained 
+// between 100 and 10000.
+void checkPollingUpdate(){
+  
   unsigned int pollingRate;
   uint8_t len = sizeof(pollingRate);
 
   // check to see if the receiver sent a new poll rate
   if(rf69.available() && rf69.recv((uint8_t *)&pollingRate, &len)){
+    
 #if !HEADLESS
     Serial.print("Received [");
     Serial.print(len);
     Serial.print("] Value: ");
     Serial.println(pollingRate);
 #endif
-    // Constrain the value
+
+    // Constrain the value and update the frequency
     updateFrequency = constrain(pollingRate, 100, 10000);
   }
-  
 }
 
 // Output to serial if HEADLESS is false
 void outputToSerial(StatusStruct* message){
   if (!HEADLESS) {
+      Serial.print("Message ID: ");
+      Serial.println(message->message_id);
       Serial.print("Time: ");
       Serial.print(message->hour, DEC); Serial.print(':');
       Serial.print(message->minute, DEC); Serial.print(':');

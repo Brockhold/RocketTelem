@@ -25,6 +25,10 @@ struct statusStruct {
   // barometric altitude
   int16_t bar_alt;
   // 32 bytes
+
+  // Message Count
+  uint16_t message_id;
+  // 34 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -32,29 +36,33 @@ struct statusStruct {
 
 typedef struct statusStruct StatusStruct;
 
-void buildPacket(sensors_vec_t &orientation, int16_t altitude, int16_t &temperature, Adafruit_GPS* GPS, StatusStruct* ss) {
-  ss->fix = GPS->fix;
-  ss->lat = GPS->lat;
-  ss->lon = GPS->lon;
-  ss->mag = GPS->mag;
-  ss->fixquality = GPS->fixquality;
-  ss->satellites = GPS->satellites;
-  ss->hour = GPS->hour;
-  ss->minute = GPS->minute;
-  ss->seconds = GPS->seconds;
-  ss->year = GPS->year;
-  ss->month = GPS->month;
-  ss->day = GPS->day;
-  ss->milliseconds = GPS->milliseconds;
-  ss->latitude_fixed = GPS->latitude_fixed;
-  ss->longitude_fixed = GPS->longitude_fixed;
+statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, int16_t &temperature, Adafruit_GPS* GPS) {
+  statusStruct ss;
+  ss.fix = GPS->fix;
+  ss.lat = GPS->lat;
+  ss.lon = GPS->lon;
+  ss.mag = GPS->mag;
+  ss.fixquality = GPS->fixquality;
+  ss.satellites = GPS->satellites;
+  ss.hour = GPS->hour;
+  ss.minute = GPS->minute;
+  ss.seconds = GPS->seconds;
+  ss.year = GPS->year;
+  ss.month = GPS->month;
+  ss.day = GPS->day;
+  ss.milliseconds = GPS->milliseconds;
+  ss.latitude_fixed = GPS->latitude_fixed;
+  ss.longitude_fixed = GPS->longitude_fixed;
 
-  ss->temperature = temperature;
-  ss->pitch = orientation.pitch;
-  ss->roll = orientation.roll;
-  ss->heading = orientation.heading;
-  ss->bar_alt = altitude;
+  ss.temperature = temperature;
+  ss.pitch = orientation.pitch;
+  ss.roll = orientation.roll;
+  ss.heading = orientation.heading;
+  ss.bar_alt = altitude;
 
+  ss.message_id = counter;
+
+  return ss;
 
 
   

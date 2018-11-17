@@ -48,7 +48,7 @@ void loop() {
     Serial.print("Received ["); 
     Serial.print(len); 
     Serial.print("] @RSSI ");
-    Serial.print(rf69.lastRssi(), DEC);
+    Serial.println(rf69.lastRssi(), DEC);
 
     displayPacketData(radioPacket);
 
@@ -133,6 +133,8 @@ void displayPacketData(statusStruct &packet){
 
 #endif
 
+   Serial.print("Message ID: ");
+   Serial.println(packet.message_id);
    Serial.print("Time: "); // Hour:Minute:Second
     Serial.print(packet.hour); Serial.print(":");
     Serial.print(packet.minute); Serial.print(":");

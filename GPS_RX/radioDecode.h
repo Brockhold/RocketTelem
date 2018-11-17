@@ -24,6 +24,10 @@ struct statusStruct {
   // barometric altitude
   int16_t bar_alt;
   // 32 bytes
+
+  // Message Count
+  uint16_t message_id;
+  // 34 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;

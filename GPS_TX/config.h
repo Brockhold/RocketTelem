@@ -1,10 +1,12 @@
 // User interaction options
 // In headless mode, nothing is written to Serial0 (USB serial)
-#define HEADLESS true
+#define HEADLESS false
 // In wait is enabled, the system will halt until Serial0 connects.
 #define WAIT true
 // Default polling rate (should be eventually replaced with dynamic polling rate variable)
 unsigned int updateFrequency = 1000;
+// Message Counter
+unsigned long counter = 0;
 
 // Serial port pinmux for GPS comms, allows for multiple hardware-accelerated serial ports via SERCOM
 #define PIN_SERIAL2_RX       (34ul)               // Pin description number for PIO_SERCOM on D12
@@ -21,3 +23,18 @@ unsigned int updateFrequency = 1000;
 
 // SD card configuration
 #define SD_CS 4                                   // chip select on pin D4
+
+// Built in Arduino libraries
+#include <SPI.h>
+#include <SD.h>
+#include <Wire.h>
+#include "wiring_private.h" // access to private pinPeripheral() function
+
+// External libraries (all available via library manager as of 10/18)
+#include <Adafruit_GPS.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_LSM303_U.h>
+#include <Adafruit_BMP085_U.h>
+#include <Adafruit_L3GD20_U.h>
+#include <Adafruit_10DOF.h>
+#include <RH_RF69.h>
