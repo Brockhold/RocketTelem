@@ -29,6 +29,10 @@ struct statusStruct {
   // Message Count
   uint16_t message_id;
   // 34 bytes
+
+  // Current Polling Rate
+  uint16_t polling_rate;
+  // 36 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -36,7 +40,7 @@ struct statusStruct {
 
 typedef struct statusStruct StatusStruct;
 
-statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, int16_t &temperature, Adafruit_GPS* GPS) {
+statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, int16_t &temperature, Adafruit_GPS* GPS, uint16_t &polling_rate) {
   statusStruct ss;
   ss.fix = GPS->fix;
   ss.lat = GPS->lat;
@@ -61,6 +65,7 @@ statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, in
   ss.bar_alt = altitude;
 
   ss.message_id = counter;
+  ss.polling_rate = polling_rate;
 
   return ss;
 
@@ -76,3 +81,10 @@ statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, in
   //ss->HDOP = GPS->HDOP;
   
 }
+
+// Packet to decode from the receiver to set polling rate
+struct polling {
+  uint32_t message_id;
+  
+  uint16_t polling_rate;
+};

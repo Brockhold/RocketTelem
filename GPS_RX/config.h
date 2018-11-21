@@ -12,3 +12,8 @@
 #define RFM69_INT     11    // DIO 0
 #define RFM69_RST     12    // RST
 #define PACKET_LEN    24    // Expected packet size
+
+#include <SPI.h>
+#include <RH_RF69.h>
+
+unsigned int counter = 0;

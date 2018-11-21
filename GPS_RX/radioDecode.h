@@ -28,9 +28,20 @@ struct statusStruct {
   // Message Count
   uint16_t message_id;
   // 34 bytes
+
+  // Current Polling Rate
+  uint16_t polling_rate;
+  // 36 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
 };
 
 typedef struct statusStruct StatusStruct;
+
+// Packet to send to the transmitter to set polling rate
+struct polling{
+  uint32_t message_id;
+  
+  uint16_t polling_rate;
+};

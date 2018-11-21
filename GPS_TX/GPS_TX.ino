@@ -7,35 +7,6 @@
 
 // Configuration files and helper methods
 #include "config.h"
-#include "radioEncode.h"
-
-// Radio object
-RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
-
-// Sensor objects
-Adafruit_10DOF                dof   = Adafruit_10DOF();
-Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
-Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
-Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
-
-// define the GPS's hardware serial port
-Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
-// Interrupt handler for Serial2
-void SERCOM1_Handler() { Serial2.IrqHandler(); }
-#define GPSSerial Serial2
-Adafruit_GPS GPS(&GPSSerial); // Init the GPS handler object with the assigned serial port
-
-// Data logging SD card configuration
-Sd2Card card;
-SdVolume volume;
-SdFile root;
-bool card_available = false;
-
-// Give the barometic sensor object the appropriate SLP for altitude measurements
-float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
-
-// This timer is used in the loop() method to service the sensor checking
-unsigned long timer = millis();
 
 /*
  * SETUP method for Arduino
@@ -78,30 +49,36 @@ void loop() {
 
   // wait around for the sensor update time
   if (millis() - timer >= updateFrequency) {
-    
-    // Build the radio packet to be sent
-    statusStruct radioPacket = getSensorData();
-    
-    // Send data to RF
-    rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
-    rf69.waitPacketSent();
 
-    // blink LED to show activity
-    blink(LED_BUILTIN, 1, 50);
+    if(updateFrequency > 0){
 
-#if !HEADLESS
-
-      Serial.print("Packet {"); 
-      for (int i = 0; i < sizeof(radioPacket); i++) {
-        Serial.print(((uint8_t *)&radioPacket)[i]); Serial.print(' ');
-      }
-      Serial.println("}"); 
+      // Build the radio packet to be sent
+      statusStruct radioPacket = getSensorData();
       
-#endif
+      // Send data to RF
+      rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
+      rf69.waitPacketSent();
+  
+      // blink LED to show activity
+      blink(LED_BUILTIN, 1, 50);
+  
+  #if !HEADLESS
+  
+        Serial.print("Packet {"); 
+        for (int i = 0; i < sizeof(radioPacket); i++) {
+          Serial.print(((uint8_t *)&radioPacket)[i]); Serial.print(' ');
+        }
+        Serial.println("}"); 
+        
+  #endif
+      
+      outputToSerial(&radioPacket);
+      
+      timer = millis(); // reset the timer
     
-    outputToSerial(&radioPacket);
+      if(updateFrequency == 1) updateFrequency = 0; // reset on-demand
+    }
     
-    timer = millis(); // reset the timer
   }
 
   checkPollingUpdate();
@@ -120,14 +97,7 @@ statusStruct getSensorData(){
     uint8_t retry = 3;
     // these may fail...if either of them do retry
     // get sensor events
-    while(!accel.getEvent(&accel_event)
-        || !mag.getEvent(&mag_event)
-        || !bmp.getEvent(&bmp_event)){
-          if(retry < 1){
-            exit(1); // kill the program
-          }
-          --retry;
-        }
+    getSensorEvents(&accel_event, &mag_event, &bmp_event);
 
     // fill out the orientation vector struct (floats) with accel data
     dof.accelGetOrientation(&accel_event, &orientation);
@@ -146,7 +116,7 @@ statusStruct getSensorData(){
     ++counter; // Increase message counter for tracking packets
 
     // take all those structures and copy their values into the radio packet struct
-    return buildPacket(orientation, altitude_int, temp_int, &GPS);
+    return buildPacket(orientation, altitude_int, temp_int, &GPS, updateFrequency);
 }
 
 // Checks to see if a polling packet was received.
@@ -155,21 +125,27 @@ statusStruct getSensorData(){
 // between 100 and 10000.
 void checkPollingUpdate(){
   
-  unsigned int pollingRate;
-  uint8_t len = sizeof(pollingRate);
+  polling p;
+  uint8_t len = sizeof(p);
 
   // check to see if the receiver sent a new poll rate
-  if(rf69.available() && rf69.recv((uint8_t *)&pollingRate, &len)){
+  if(rf69.available() && rf69.recv((uint8_t *)&p, &len)){
     
 #if !HEADLESS
     Serial.print("Received [");
     Serial.print(len);
-    Serial.print("] Value: ");
-    Serial.println(pollingRate);
+    Serial.print("] Message ID: ");
+    Serial.print(p.message_id);
+    Serial.print("Value: ");
+    Serial.println(p.polling_rate);
 #endif
 
+    if(p.polling_rate == 0 || p.polling_rate == 1){
+      updateFrequency = p.polling_rate;
+      return;
+    }
     // Constrain the value and update the frequency
-    updateFrequency = constrain(pollingRate, 100, 10000);
+    updateFrequency = constrain(p.polling_rate, 100, 10000);
   }
 }
 
@@ -177,7 +153,9 @@ void checkPollingUpdate(){
 void outputToSerial(StatusStruct* message){
   if (!HEADLESS) {
       Serial.print("Message ID: ");
-      Serial.println(message->message_id);
+      Serial.print(message->message_id);
+      Serial.print(" Current Polling Rate: ");
+      Serial.print(message->polling_rate); Serial.println("ms");
       Serial.print("Time: ");
       Serial.print(message->hour, DEC); Serial.print(':');
       Serial.print(message->minute, DEC); Serial.print(':');
@@ -301,5 +279,24 @@ bool sdInitialize(size_t CSpin) {
   } else {
     if (!HEADLESS) Serial.println("SD Card detected and writable. Logging Enabled.");
     card_available = true;
+  }
+}
+
+// This gathers the sensor data. If any of the sensors fail to get an event a few times the system fails
+void getSensorEvents(sensors_event_t *accel_event, sensors_event_t *mag_event, sensors_event_t *bmp_event){
+  uint8_t retry = 3;
+  while(!accel.getEvent(accel_event)){
+    if(retry < 1) exit(1);
+    --retry;
+  }
+  retry = 3;
+  while(!mag.getEvent(mag_event)){
+    if(retry < 1) exit(1);
+    --retry;
+  }
+  retry = 3;
+  while(!bmp.getEvent(bmp_event)){
+    if(retry < 1) exit(1);
+    --retry;
   }
 }

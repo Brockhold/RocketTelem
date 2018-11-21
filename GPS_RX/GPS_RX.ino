@@ -3,9 +3,6 @@
  * Adafruit M0
  */
 
-#include <SPI.h>
-#include <RH_RF69.h>
-
 #include "config.h"
 #include "radioDecode.h"
 
@@ -19,12 +16,17 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
-  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);   
+  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
 
   Serial.println("Feather RFM69 RX Test!");
   Serial.println();
+  Serial.println();
+  Serial.println("To change polling rate enter a value between 100 and 10000 into the Serial input.");
+  Serial.println(" Entering a '0' places the transmitter into on-demand mode.");
+  Serial.println(" Entering a '1' places the transmitter into on-demand mode and returns a single response.");\
+  delay(5000); // wait five seconds before continuing
 
   rfInitialize();
 }
@@ -33,7 +35,7 @@ void setup() {
  * Program Loop
  */
 void loop() {
-
+  
   readInput();
   
   struct statusStruct radioPacket;
@@ -51,7 +53,6 @@ void loop() {
     Serial.println(rf69.lastRssi(), DEC);
 
     displayPacketData(radioPacket);
-
   }
 }
 
@@ -106,15 +107,29 @@ void readInput(){
   //enter 0 for on-demand mode. press enter to receive data
   //enter 1 to enable periodical
   if(Serial.available() > 0){
-    unsigned int pollingRate = Serial.parseInt();
+    ++counter;
+    
+    polling p;
+    p.polling_rate = Serial.parseInt();
+    p.message_id = counter;
     
     // clears out buffer for next read
     while(Serial.available() > 0){
       Serial.read();
     }
     // Send data to RF
-    rf69.send((uint8_t *)&pollingRate, sizeof(pollingRate));
+    rf69.send((uint8_t *)&p, sizeof(p));
     rf69.waitPacketSent();
+
+    // print details to screen
+    Serial.println();
+    Serial.print("Polling rate has been updated to: ");
+    if(p.polling_rate < 2){
+      Serial.println("On-Demand");
+    }else{
+      Serial.print(p.polling_rate); Serial.println("ms");
+    }
+    Serial.println();
   }
 }
 
@@ -134,7 +149,13 @@ void displayPacketData(statusStruct &packet){
 #endif
 
    Serial.print("Message ID: ");
-   Serial.println(packet.message_id);
+   Serial.print(packet.message_id);
+   Serial.print(" Current Polling Rate: ");
+   if(packet.polling_rate < 2){
+    Serial.println("On-Demand");
+   }else{
+    Serial.print(packet.polling_rate); Serial.println("ms");
+   }
    Serial.print("Time: "); // Hour:Minute:Second
     Serial.print(packet.hour); Serial.print(":");
     Serial.print(packet.minute); Serial.print(":");

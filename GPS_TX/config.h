@@ -1,10 +1,10 @@
 // User interaction options
 // In headless mode, nothing is written to Serial0 (USB serial)
-#define HEADLESS false
+#define HEADLESS true
 // In wait is enabled, the system will halt until Serial0 connects.
-#define WAIT true
+#define WAIT false
 // Default polling rate (should be eventually replaced with dynamic polling rate variable)
-unsigned int updateFrequency = 1000;
+uint16_t updateFrequency = 1000;
 // Message Counter
 unsigned long counter = 0;
 
@@ -38,3 +38,33 @@ unsigned long counter = 0;
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_10DOF.h>
 #include <RH_RF69.h>
+
+#include "radioEncode.h"
+
+// Radio object
+RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
+
+// Sensor objects
+Adafruit_10DOF                dof   = Adafruit_10DOF();
+Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
+Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
+Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
+
+// define the GPS's hardware serial port
+Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
+// Interrupt handler for Serial2
+void SERCOM1_Handler() { Serial2.IrqHandler(); }
+#define GPSSerial Serial2
+Adafruit_GPS GPS(&GPSSerial); // Init the GPS handler object with the assigned serial port
+
+// Data logging SD card configuration
+Sd2Card card;
+SdVolume volume;
+SdFile root;
+bool card_available = false;
+
+// Give the barometic sensor object the appropriate SLP for altitude measurements
+float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
+
+// This timer is used in the loop() method to service the sensor checking
+unsigned long timer = millis();
