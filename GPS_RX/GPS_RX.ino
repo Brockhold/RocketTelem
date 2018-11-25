@@ -1,59 +1,20 @@
 /*
- * Sketch for receiving GPS data from RF.
- * Adafruit M0
+ * Sketch for receiving sensor data from remote device..
+ * 
+ * Hardware: 
+ *  Adafruit M0 (currently using BTLE Bluefruit, but not using the BT module)
+ *  RF69HCW radio tranceiver connected to SPI (see config.h for pin details)
  */
 
 #include "config.h"
 #include "radioDecode.h"
 
-
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
-/*
- * SETUP
- */
-void setup() {
-  Serial.begin(115200);
-  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
-
-  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);
-  pinMode(RFM69_RST, OUTPUT);
-  digitalWrite(RFM69_RST, LOW);
-
-  Serial.println("Feather RFM69 RX Test!");
-  Serial.println();
-  Serial.println();
+void usageMessage() {
   Serial.println("To change polling rate enter a value between 100 and 10000 into the Serial input.");
-  Serial.println(" Entering a '0' places the transmitter into on-demand mode.");
-  Serial.println(" Entering a '1' places the transmitter into on-demand mode and returns a single response.");\
-  delay(5000); // wait five seconds before continuing
-
-  rfInitialize();
-}
-
-/*
- * Program Loop
- */
-void loop() {
-  
-  readInput();
-  
-  struct statusStruct radioPacket;
-  
-  uint8_t len = sizeof(radioPacket);
-  if (rf69.available() && rf69.recv((uint8_t *)&radioPacket, &len)) {
-    if (!len) return;
-
-    // blink LED to show activity
-    blink(LED_BUILTIN, 1, 50);
-
-    Serial.print("Received ["); 
-    Serial.print(len); 
-    Serial.print("] @RSSI ");
-    Serial.println(rf69.lastRssi(), DEC);
-
-    displayPacketData(radioPacket);
-  }
+  Serial.println(" Entering '0' or <emptystring>  places the transmitter into on-demand mode and returns the current status.");
+  Serial.println("Sending 'sd 0' and 'sd 1' enables and disables sd logging respectively");
 }
 
 // RF Initialize Method
@@ -104,11 +65,8 @@ void blink(int pin, int count, int wait) {
  * Reads integer from Serial to set polling rate on TX
  */
 void readInput(){
-  //enter 0 for on-demand mode. press enter to receive data
-  //enter 1 to enable periodical
+  //send 0 or <emptystring> for on-demand mode. press enter to receive data.
   if(Serial.available() > 0){
-    ++counter;
-    
     polling p;
     p.polling_rate = Serial.parseInt();
     p.message_id = counter;
@@ -117,19 +75,25 @@ void readInput(){
     while(Serial.available() > 0){
       Serial.read();
     }
-    // Send data to RF
-    rf69.send((uint8_t *)&p, sizeof(p));
-    rf69.waitPacketSent();
 
     // print details to screen
     Serial.println();
     Serial.print("Polling rate has been updated to: ");
-    if(p.polling_rate < 2){
-      Serial.println("On-Demand");
-    }else{
-      Serial.print(p.polling_rate); Serial.println("ms");
+    
+    if (!(p.polling_rate < 100)) {
+      if(p.polling_rate == 0){
+        Serial.println("On-Demand");
+        usageMessage();
+      } else {
+        Serial.print(p.polling_rate); Serial.println("ms");
+      }
+      // Send data to RF
+      ++counter;
+      rf69.send((uint8_t *)&p, sizeof(p));
+      rf69.waitPacketSent();
+    } else {
+      Serial.print(p.polling_rate); Serial.println("ms is too fast, please enter another value.");
     }
-    Serial.println();
   }
 }
 
@@ -192,3 +156,54 @@ void displayPacketData(statusStruct &packet){
 
     Serial.println("-");
  }
+
+ /*
+ * SETUP
+ */
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+
+  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);
+  pinMode(RFM69_RST, OUTPUT);
+  digitalWrite(RFM69_RST, LOW);
+
+  usageMessage();
+  delay(5000); // wait five seconds before continuing
+
+  rfInitialize();
+}
+
+/*
+ * Program Loop
+ */
+void loop() {
+  
+  readInput(); // check for new polling rate directive from user
+
+
+  if (rf69.available()) {
+    struct statusStruct radioPacket;
+    uint8_t len = 0;
+     if (rf69.recv((uint8_t *)&radioPacket, &len)) {
+      // first validate the length of the packet is equal to the storage size
+      if (len == sizeof(radioPacket)) {
+        // blink LED to show activity
+        blink(LED_BUILTIN, 1, 50);
+    
+        Serial.print("Received ["); 
+        Serial.print(len); 
+        Serial.print("] @ RSSI ");
+        Serial.println(rf69.lastRssi(), DEC);
+        
+        displayPacketData(radioPacket);
+      } else {
+        // case in which length was too small after valid receive
+      }
+    } else {
+      // case in which a packet was available but the recv failed
+    }
+  } else {
+    // no new packet was available
+  }
+}

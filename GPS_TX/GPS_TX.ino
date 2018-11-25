@@ -5,11 +5,11 @@
  * a list of all necessary Arduino libraries.
  */
 
-// Configuration files and helper methods
+// Configuration files, helper methods, global variables
 #include "config.h"
 
 /*
- * SETUP method for Arduino
+ * Init conneted devices on SPI and serial
  */
 void setup() {
   // Set IO pin modes
@@ -31,11 +31,11 @@ void setup() {
 }
 
 /*
- * Program Loop
+ * Read sensor data periodically or on-demand, compose a packet, and send to remote receiver
  */
 void loop() {
   
-  // pull a chars one at a time from the GPS
+  // pull chars one at a time from the GPS
   GPS.read();
   
   // if a sentence is received, we can check the checksum, parse it...
@@ -140,12 +140,12 @@ void checkPollingUpdate(){
     Serial.println(p.polling_rate);
 #endif
 
-    if(p.polling_rate == 0 || p.polling_rate == 1){
+    if(p.polling_rate == 0){
       updateFrequency = p.polling_rate;
-      return;
+    } else {
+      // Constrain the value and update the frequency
+      updateFrequency = constrain(p.polling_rate, 100, 10000);
     }
-    // Constrain the value and update the frequency
-    updateFrequency = constrain(p.polling_rate, 100, 10000);
   }
 }
 
