@@ -18,4 +18,4 @@
 
 unsigned int counter = 0;
 
-#define MINPERIOD = 100
+#define MINPERIOD 100
