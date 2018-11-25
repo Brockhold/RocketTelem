@@ -86,7 +86,7 @@ void readInput(){
       
       // tell the user about the new polling rate, and optionally the usage
       if(p.polling_rate == 0){
-        Serial.println("Polling is now On-Demand");
+        Serial.println("Polling is On-Demand");
         usageMessage();
       } else {
         Serial.print("Polling rate has been updated to: ");

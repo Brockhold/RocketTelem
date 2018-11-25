@@ -1,12 +1,9 @@
 // User interaction options
-// In headless mode, nothing is written to Serial0 (USB serial)
-#define HEADLESS true
-// In wait is enabled, the system will halt until Serial0 connects.
-#define WAIT false
-// Default polling rate (should be eventually replaced with dynamic polling rate variable)
-uint16_t updateFrequency = 1000;
-// Message Counter
-unsigned long counter = 0;
+
+#define HEADLESS false // In headless mode, nothing is written to Serial0 (USB serial)
+#define WAIT false // In wait is enabled, the system will halt until Serial0 connects.
+uint16_t updateFrequency = 1000; // Dynamic polling rate
+unsigned long counter = 0; // Message Counter
 
 // Serial port pinmux for GPS comms, allows for multiple hardware-accelerated serial ports via SERCOM
 #define PIN_SERIAL2_RX       (34ul)               // Pin description number for PIO_SERCOM on D12
@@ -39,7 +36,7 @@ unsigned long counter = 0;
 #include <Adafruit_10DOF.h>
 #include <RH_RF69.h>
 
-#include "radioEncode.h"
+#include "radioEncode.h" // custom radio packet structure
 
 // Radio object
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
