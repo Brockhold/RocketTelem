@@ -12,9 +12,10 @@
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
 void usageMessage() {
-  Serial.println("To change polling rate enter a value between 100 and 10000 into the Serial input.");
-  Serial.println(" Entering '0' or <emptystring>  places the transmitter into on-demand mode and returns the current status.");
-  Serial.println("Sending 'sd 0' and 'sd 1' enables and disables sd logging respectively");
+  Serial.print("To change polling rate enter a value between "); Serial.print(MINPERIOD);
+  Serial.println(" and 10000 into the Serial input.");
+  Serial.println("  Entering '0' or <emptystring> reutrns the current status and enters on-demand mode.");
+  Serial.println("  Sending 'sd 0' and 'sd 1' enables or disables sd logging respectively");
 }
 
 // RF Initialize Method
@@ -76,21 +77,21 @@ void readInput(){
       Serial.read();
     }
 
-    // print details to screen
-    Serial.println();
-    Serial.print("Polling rate has been updated to: ");
-    
-    if (!(p.polling_rate < MINPERIOD)) {
-      if(p.polling_rate == 0){
-        Serial.println("On-Demand");
-        usageMessage();
-      } else {
-        Serial.print(p.polling_rate); Serial.println("ms");
-      }
-      // Send data to RF
+    // check validity of polling rate
+    if ((p.polling_rate == 0) || (p.polling_rate >= MINPERIOD)) {
+      // Send polling rate to TX
       ++counter;
       rf69.send((uint8_t *)&p, sizeof(p));
       rf69.waitPacketSent();
+      
+      // tell the user about the new polling rate, and optionally the usage
+      if(p.polling_rate == 0){
+        Serial.println("Polling is now On-Demand");
+        usageMessage();
+      } else {
+        Serial.print("Polling rate has been updated to: ");
+        Serial.print(p.polling_rate); Serial.println("ms");
+      }
     } else {
       Serial.print(p.polling_rate); Serial.println("ms is too fast, please enter another value.");
     }
@@ -169,7 +170,7 @@ void setup() {
   digitalWrite(RFM69_RST, LOW);
 
   usageMessage();
-  delay(5000); // wait five seconds before continuing
+  //delay(5000); // wait five seconds before continuing
 
   rfInitialize();
 }
@@ -177,33 +178,24 @@ void setup() {
 /*
  * Program Loop
  */
+
 void loop() {
   
   readInput(); // check for new polling rate directive from user
 
+  struct statusStruct radioPacket;
+  uint8_t len = sizeof(radioPacket);
+  if (rf69.available() && rf69.recv((uint8_t *)&radioPacket, &len)) {
+    if (!len) return;
 
-  if (rf69.available()) {
-    struct statusStruct radioPacket;
-    uint8_t len = 0;
-     if (rf69.recv((uint8_t *)&radioPacket, &len)) {
-      // first validate the length of the packet is equal to the storage size
-      if (len == sizeof(radioPacket)) {
-        // blink LED to show activity
-        blink(LED_BUILTIN, 1, 50);
-    
-        Serial.print("Received ["); 
-        Serial.print(len); 
-        Serial.print("] @ RSSI ");
-        Serial.println(rf69.lastRssi(), DEC);
-        
-        displayPacketData(radioPacket);
-      } else {
-        // case in which length was too small after valid receive
-      }
-    } else {
-      // case in which a packet was available but the recv failed
-    }
-  } else {
-    // no new packet was available
+    // blink LED to show activity
+    blink(LED_BUILTIN, 1, 50);
+
+    Serial.print("Received ["); 
+    Serial.print(len); 
+    Serial.print("] @RSSI ");
+    Serial.println(rf69.lastRssi(), DEC);
+
+    displayPacketData(radioPacket);
   }
 }
