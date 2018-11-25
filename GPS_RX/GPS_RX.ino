@@ -80,7 +80,7 @@ void readInput(){
     Serial.println();
     Serial.print("Polling rate has been updated to: ");
     
-    if (!(p.polling_rate < 100)) {
+    if (!(p.polling_rate < MINPERIOD)) {
       if(p.polling_rate == 0){
         Serial.println("On-Demand");
         usageMessage();

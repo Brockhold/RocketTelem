@@ -3,7 +3,7 @@
 #define DEBUG false
 // In headless mode, nothing is written to Serial0 (USB serial)
 #define HEADLESS false
-// In wait is enabled, the system will halt until Serial0 connects.
+// In wait is enabled, the system will pause until Serial0 connects.
 #define WAIT true
 
 /************ Radio Setup ***************/
@@ -17,3 +17,5 @@
 #include <RH_RF69.h>
 
 unsigned int counter = 0;
+
+#define MINPERIOD = 100
