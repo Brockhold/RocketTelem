@@ -13,7 +13,7 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
 void usageMessage() {
   Serial.print(" | To set a polling rate enter a value between "); Serial.print(MINPERIOD);
-  Serial.println("us and 10000us into the Serial input.");
+  Serial.println("ms and 10000ms into the Serial input.");
   Serial.println(" |     Entering '0' or <emptystring> reutrns the current status and enters on-demand mode.");
   //Serial.println(" |     Sending 'sd 0' and 'sd 1' enables or disables sd logging respectively");
 }
