@@ -1,7 +1,7 @@
-
-
-// Defined struct for holding all sensor data that the radio will transfer
-// the maximum size is 64 bytes
+/*
+ * Defined struct for holding all sensor data that the radio will transfer
+ * the maximum size of a single radio packet is 64 bytes, so keep track of usage
+ */
 struct statusStruct {
   boolean fix;
   // 1 byte (?)
@@ -35,8 +35,8 @@ struct statusStruct {
   // 36 bytes
 
   // mapped to 0-100% battery capacity
-  uint8_t batt_level;
-  // 37 bytes
+  uint16_t batt_level;
+  // 38 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -70,6 +70,11 @@ statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, in
 
   ss.message_id = counter;
   ss.polling_rate = polling_rate;
+
+  // get the battery level (value * divider * vRef) note that unit is 1024x higher than the voltage
+  float vMeasured = analogRead(VBATPIN) * 2 * 3.3;
+  ss.batt_level = (int)(vMeasured);
+  
 
   return ss;
 

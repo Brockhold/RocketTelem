@@ -5,6 +5,8 @@
 uint16_t updateFrequency = 1000; // Dynamic polling rate
 unsigned long counter = 0; // Message Counter
 
+#define VBATPIN A7 // pin used to measure battery voltage via a 1/2 divider.
+
 // Serial port pinmux for GPS comms, allows for multiple hardware-accelerated serial ports via SERCOM
 #define PIN_SERIAL2_RX       (34ul)               // Pin description number for PIO_SERCOM on D12
 #define PIN_SERIAL2_TX       (36ul)               // Pin description number for PIO_SERCOM on D10

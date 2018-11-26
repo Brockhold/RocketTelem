@@ -160,6 +160,8 @@ void outputToSerial(StatusStruct* message){
       Serial.print(message->year, DEC); Serial.print("/");
       Serial.print(message->month, DEC); Serial.print('/');
       Serial.println(message->day, DEC);
+
+      Serial.print("Battery voltage: "); Serial.print((float)message->batt_level / 1024); Serial.println("v");
       
       Serial.print("Fix: "); Serial.print(message->fix);
       Serial.print(" quality: "); Serial.print(message->fixquality);

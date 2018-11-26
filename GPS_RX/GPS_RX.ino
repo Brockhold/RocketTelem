@@ -130,7 +130,9 @@ void displayPacketData(statusStruct &packet){
     Serial.print(packet.year); Serial.print("/");
     Serial.print(packet.month); Serial.print("/");
     Serial.println(packet.day);
-
+    // Transmitter battery level
+    Serial.print("Battery voltage: "); Serial.print((float)packet.batt_level / 1024); Serial.println("v");
+    
     // GPS reception status
     Serial.print("Fix: "); Serial.print(packet.fix?"Yes":"No");
     Serial.print(", Quality: "); Serial.print(packet.fixquality);

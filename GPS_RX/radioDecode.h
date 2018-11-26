@@ -34,8 +34,8 @@ struct statusStruct {
   // 36 bytes
 
   //mapped to 0-100% battery capacity
-  uint8_t batt_level;
-  // 37 bytes
+  uint16_t batt_level;
+  // 38 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
