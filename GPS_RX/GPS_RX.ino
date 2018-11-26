@@ -12,10 +12,10 @@
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 
 void usageMessage() {
-  Serial.print("To change polling rate enter a value between "); Serial.print(MINPERIOD);
-  Serial.println(" and 10000 into the Serial input.");
-  Serial.println("  Entering '0' or <emptystring> reutrns the current status and enters on-demand mode.");
-  Serial.println("  Sending 'sd 0' and 'sd 1' enables or disables sd logging respectively");
+  Serial.print(" | To set a polling rate enter a value between "); Serial.print(MINPERIOD);
+  Serial.println(" | us and 10000us into the Serial input.");
+  Serial.println(" |     Entering '0' or <emptystring> reutrns the current status and enters on-demand mode.");
+  //Serial.println(" |     Sending 'sd 0' and 'sd 1' enables or disables sd logging respectively");
 }
 
 // RF Initialize Method
@@ -48,8 +48,6 @@ void rfInitialize(){
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
-  Serial.println();
-  Serial.println("Waiting for message...");
 }
 
 // toggle the given pin by some count # of times for a duration of 'wait'
@@ -86,10 +84,10 @@ void readInput(){
       
       // tell the user about the new polling rate, and optionally the usage
       if(p.polling_rate == 0){
-        Serial.println("Polling is On-Demand");
+        Serial.println("[!] Requested On-Demand update(s)");
         usageMessage();
       } else {
-        Serial.print("Polling rate has been updated to: ");
+        Serial.print("[!] Polling rate has been updated to: ");
         Serial.print(p.polling_rate); Serial.println("ms");
       }
     } else {
@@ -102,62 +100,69 @@ void readInput(){
  * Sends received packet data to Serial
  */
 void displayPacketData(statusStruct &packet){
+  Serial.println("<packet>");
+  Serial.println("  Metadata:");
 
-#if DEBUG
+  #if DEBUG
+    Serial.print("    Raw = {"); 
+    for (int i = 0; i < sizeof(packet); i++) {
+      Serial.print(' '); Serial.print(((uint8_t *)&packet)[i]); 
+    }
+    Serial.println("}");
+  #endif
 
-      Serial.print("Raw Packet Data = {"); 
-      for (int i = 0; i < sizeof(packet); i++) {
-        Serial.print(' '); Serial.print(((uint8_t *)&packet)[i]); 
-      }
-      Serial.println("}");
+  Serial.print("    Message ID: "); Serial.println(packet.message_id);
+  Serial.print("    Current Polling Rate: ");
+  if(packet.polling_rate < 2){
+   Serial.println("On-Demand");
+  }else{
+   Serial.print(packet.polling_rate); Serial.println("ms");
+  }
+  
+  Serial.print("  Date & Time:\n    "); 
+  // Year/Month/Day
+  Serial.print(packet.year); Serial.print("/");
+  Serial.print(packet.month); Serial.print("/");
+  Serial.println(packet.day);
+  Serial.print("    ");
+  // Hour:Minute:Second
+  Serial.print(packet.hour); Serial.print(":");
+  Serial.print(packet.minute); Serial.print(":");
+  Serial.println(packet.seconds);
 
-#endif
+  Serial.println("  Transmitter Status:");
+  
+  // Transmitter battery level
+  Serial.print("    Battery voltage: "); Serial.print((float)packet.batt_level / 1024); Serial.println("v");
+  Serial.print("    Temperature (C): "); Serial.println(packet.temperature);
 
-   Serial.print("Message ID: ");
-   Serial.print(packet.message_id);
-   Serial.print(" Current Polling Rate: ");
-   if(packet.polling_rate < 2){
-    Serial.println("On-Demand");
-   }else{
-    Serial.print(packet.polling_rate); Serial.println("ms");
-   }
-   Serial.print("Time: "); // Hour:Minute:Second
-    Serial.print(packet.hour); Serial.print(":");
-    Serial.print(packet.minute); Serial.print(":");
-    Serial.println(packet.seconds);
-
-    Serial.print("Date: "); // Year/Month/Day
-    Serial.print(packet.year); Serial.print("/");
-    Serial.print(packet.month); Serial.print("/");
-    Serial.println(packet.day);
-    // Transmitter battery level
-    Serial.print("Battery voltage: "); Serial.print((float)packet.batt_level / 1024); Serial.println("v");
-    
-    // GPS reception status
-    Serial.print("Fix: "); Serial.print(packet.fix?"Yes":"No");
-    Serial.print(", Quality: "); Serial.print(packet.fixquality);
-    Serial.print(", Satellites: "); Serial.println(packet.satellites);
+  Serial.println("  Physical Status:");
+  
+  // GPS reception status
+  Serial.print("    GPS fix: "); Serial.print(packet.fix?"Yes":"No");
+  Serial.print(", Quality: "); Serial.print(packet.fixquality);
+  Serial.print(", Satellites: "); Serial.println(packet.satellites);
 
     // If there is a GPS fix, print the reported Lat & Ln
     if (packet.fix) {
-      Serial.print("Location: ");
+      Serial.print("    Location: ");
       if ((char) packet.lat == 'S') Serial.print("-");
       Serial.print(packet.latitude_fixed/10000000); Serial.print("."); Serial.print(packet.latitude_fixed % 10000000);
       Serial.print(", ");
       if ((char) packet.lon == 'W') Serial.print("-");
       Serial.print(packet.longitude_fixed/10000000); Serial.print("."); Serial.println(packet.longitude_fixed % 10000000);
     }
-    
-    Serial.print("Temperature (C): "); Serial.println(packet.temperature);
-    Serial.print("Accelerometer {"); 
-      Serial.print(" Pitch: "); Serial.print(packet.pitch); 
-      Serial.print(" Roll: "); Serial.print(packet.roll);
-      Serial.print(" Heading: "); Serial.print(packet.heading);
-      Serial.println(" }");
+    // Barometric altimeter status
+    Serial.print("    Altitude: "); Serial.println(packet.bar_alt);
+    // Accelerometer status
+    Serial.print("    Accelerometer {"); 
+    Serial.print(" Pitch: "); Serial.print(packet.pitch); 
+    Serial.print(" Roll: "); Serial.print(packet.roll);
+    Serial.print(" Heading: "); Serial.print(packet.heading);
+    Serial.println(" }");
     //Serial.print("Compass Heading: "); Serial.println(packet.mag_heading);
-    Serial.print("Altitude: "); Serial.println(packet.bar_alt);
-
-    Serial.println("-");
+    
+    Serial.println("</packet>");
  }
 
  /*
