@@ -34,6 +34,8 @@ void setup() {
  * Read sensor data periodically or on-demand, compose a packet, and send to remote receiver
  */
 void loop() {
+  // look for user input about new polling rate
+  onDemand = checkPollingUpdate();
   
   // pull chars one at a time from the GPS
   GPS.read();
@@ -44,49 +46,39 @@ void loop() {
       return; // we can fail to parse; wait for another message
   }
   
-  // if millis() or timer wraps around, we'll reset it
-  if (timer > millis()) timer = millis();
-
   // wait around for the sensor update time
-  if (millis() - timer >= updateFrequency) {
-
-    if(updateFrequency > 0){
-
-      // Build the radio packet to be sent
-      statusStruct radioPacket = getSensorData();
-      
-      // Send data to RF
-      rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
-      rf69.waitPacketSent();
-  
-      // blink LED to show activity
-      blink(LED_BUILTIN, 1, 50);
-  
-  #if !HEADLESS
-  
-        Serial.print("Packet {"); 
-        for (int i = 0; i < sizeof(radioPacket); i++) {
-          Serial.print(((uint8_t *)&radioPacket)[i]); Serial.print(' ');
-        }
-        Serial.println("}"); 
-        
-  #endif
-      
-      outputToSerial(&radioPacket);
-      
-      timer = millis(); // reset the timer
+  if (onDemand || (updateFrequency > 100 && millis() - timer >= updateFrequency)) {
+    onDemand = false; // if in onDemand mode, return to waiting
+    // Build the radio packet to be sent
+    statusStruct radioPacket = getSensorData();
     
-      if(updateFrequency == 1) updateFrequency = 0; // reset on-demand
+    // Send data to RF
+    rf69.send((uint8_t*)&radioPacket, sizeof(radioPacket));
+    rf69.waitPacketSent();
+
+    // blink LED to show activity
+    blink(LED_BUILTIN, 1, 50);
+
+    #if !HEADLESS
+
+    Serial.print("Packet {"); 
+    for (int i = 0; i < sizeof(radioPacket); i++) {
+      Serial.print(((uint8_t *)&radioPacket)[i]); Serial.print(' ');
     }
+    Serial.println("}"); 
+      
+    #endif
     
+    outputToSerial(&radioPacket);
+    
+    timer = millis(); // reset the timer
   }
-
-  checkPollingUpdate();
-  
 }
 
-// Gets all the sensor data and returns the struct
-// If any even continues to fail the whole program fails
+/*
+ * Gets all the sensor data and returns the struct
+ * If any even continues to fail the whole program fails
+ */
 statusStruct getSensorData(){
   // Event structures for each sensor
     sensors_event_t accel_event;
@@ -119,34 +111,37 @@ statusStruct getSensorData(){
     return buildPacket(orientation, altitude_int, temp_int, &GPS, updateFrequency);
 }
 
-// Checks to see if a polling packet was received.
-// updates the polling frequency based on the received
-// value. Values is in milliseconds and contrained 
-// between 100 and 10000.
-void checkPollingUpdate(){
-  
+/*
+ * Checks to see if a polling packet was received.
+ * updates the polling frequency based on the received value. 
+ * Values is in milliseconds and contrained between 100 and 10000.
+ * Returns true iff the user has requested an on-demand update.
+ */
+bool checkPollingUpdate(){
   polling p;
   uint8_t len = sizeof(p);
 
   // check to see if the receiver sent a new poll rate
   if(rf69.available() && rf69.recv((uint8_t *)&p, &len)){
     
-#if !HEADLESS
+    #if !HEADLESS
     Serial.print("Received [");
     Serial.print(len);
     Serial.print("] Message ID: ");
     Serial.print(p.message_id);
-    Serial.print("Value: ");
+    Serial.print(" Value: ");
     Serial.println(p.polling_rate);
-#endif
+    #endif
 
     if(p.polling_rate == 0){
       updateFrequency = p.polling_rate;
+      return true;
     } else {
       // Constrain the value and update the frequency
       updateFrequency = constrain(p.polling_rate, 100, 10000);
     }
   }
+  return false;
 }
 
 // Output to serial if HEADLESS is false

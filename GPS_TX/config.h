@@ -65,3 +65,6 @@ float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 // This timer is used in the loop() method to service the sensor checking
 unsigned long timer = millis();
+
+// set onDemand to true when the user requests an update, and returned to false after update has been serviced
+bool onDemand = false; 
