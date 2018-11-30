@@ -47,7 +47,7 @@ void loop() {
   }
   
   // wait around for the sensor update time
-  if (onDemand || (updateFrequency > 100 && millis() - timer >= updateFrequency)) {
+  if (onDemand || (updateFrequency >= 100 && millis() - timer >= updateFrequency)) {
     onDemand = false; // if in onDemand mode, return to waiting
     // Build the radio packet to be sent
     statusStruct radioPacket = getSensorData();
