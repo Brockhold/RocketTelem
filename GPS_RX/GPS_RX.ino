@@ -156,9 +156,9 @@ void displayPacketData(statusStruct &packet){
     Serial.print("    Altitude: "); Serial.println(packet.bar_alt);
     // Accelerometer status
     Serial.print("    Accelerometer {"); 
-    Serial.print(" Pitch: "); Serial.print(packet.pitch); 
-    Serial.print(" Roll: "); Serial.print(packet.roll);
-    Serial.print(" Heading: "); Serial.print(packet.heading);
+    Serial.print(" Pitch: "); Serial.print((float)(packet.pitch) / 700); 
+    Serial.print(" Roll: "); Serial.print((float)(packet.roll) / 300);
+    Serial.print(" Heading: "); Serial.print((float)(packet.heading) / 180);
     Serial.println(" }");
     //Serial.print("Compass Heading: "); Serial.println(packet.mag_heading);
     
