@@ -16,8 +16,8 @@ struct statusStruct {
   // 24 bytes
   
   // accelerometer& magnetometer X Y Z
-  int16_t pitch;
-  int16_t roll;
+  uint16_t pitch;
+  uint16_t roll;
   uint16_t heading;
   // 30 bytes
   
