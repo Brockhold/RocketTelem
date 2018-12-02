@@ -17,8 +17,8 @@ struct statusStruct {
   // 24 bytes
   
   // accelerometer& magnetometer X Y Z
-  uint16_t pitch;
-  uint16_t roll;
+  int16_t pitch;
+  int16_t roll;
   uint16_t heading;
   // 30 bytes
   
@@ -65,8 +65,8 @@ statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, in
   ss.temperature = temperature;
   // pitch/roll/heading are floats and require conversion to 16b integer
   // multiply by a large number to drive them into the range workable in 16b with many decimal places
-  ss.pitch = (uint16_t)(orientation.pitch * 700);
-  ss.roll = (uint16_t)(orientation.roll * 300);
+  ss.pitch = (int16_t)(orientation.pitch * 700);
+  ss.roll = (int16_t)(orientation.roll * 300);
   ss.heading = (uint16_t)(orientation.heading * 180);
   ss.bar_alt = altitude;
 

@@ -1,6 +1,6 @@
 // User interaction options
 // Set this to true for additional sensor details
-#define DEBUG true
+#define DEBUG false
 // In headless mode, nothing is written to Serial0 (USB serial)
 #define HEADLESS false
 // In wait is enabled, the system will pause until Serial0 connects.
