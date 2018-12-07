@@ -57,9 +57,7 @@ void SERCOM1_Handler() { Serial2.IrqHandler(); }
 Adafruit_GPS GPS(&GPSSerial); // Init the GPS handler object with the assigned serial port
 
 // Data logging SD card configuration
-Sd2Card card;
-SdVolume volume;
-SdFile root;
+File logFile;
 bool card_available = false;
 
 // Give the barometic sensor object the appropriate SLP for altitude measurements

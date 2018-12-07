@@ -28,6 +28,12 @@ void setup() {
   rfInitialize();
   gpsInitialize();
   initSensors();
+  if (sdInitialize(SD_CS)) {
+    logFile = SD.open("startlog.txt", FILE_WRITE);
+    if (logFile) {
+      logFile.println("Log start");
+    }
+  }
 }
 
 /*
@@ -271,11 +277,14 @@ void initSensors() {
 
 // Set up the SD card and log file
 bool sdInitialize(size_t CSpin) {
-  if (!card.init()) {
+  if (!SD.begin(CSpin)) {
     if (!HEADLESS) Serial.println("SD card initialization failed. Logging Disabled.");
+    card_available = false;
+    return false;
   } else {
     if (!HEADLESS) Serial.println("SD Card detected and writable. Logging Enabled.");
     card_available = true;
+    return true;
   }
 }
 
