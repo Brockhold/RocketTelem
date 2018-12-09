@@ -14,8 +14,9 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
 void usageMessage() {
   Serial.print(" | To set a polling rate enter a value between "); Serial.print(MINPERIOD);
   Serial.println("ms and 10000ms into the Serial input.");
-  Serial.println(" |     Entering '0' or <emptystring> reutrns the current status and enters on-demand mode.");
-  //Serial.println(" |     Sending 'sd 0' and 'sd 1' enables or disables sd logging respectively");
+  Serial.println(" |     Entering '0' or <emptystring> returns the current status and enters on-demand mode.");
+  Serial.println(" |     Sending 's 0' and 's 1' enables or disables sd logging respectively.");
+  Serial.println(" |     Sending 's 2' creates a new log file. Sending 's 9' erases the current log.");
 }
 
 // RF Initialize Method
@@ -66,14 +67,34 @@ void blink(int pin, int count, int wait) {
 void readInput(){
   //send 0 or <emptystring> for on-demand mode. press enter to receive data.
   if(Serial.available() > 0){
+
+    //count of commands received
+    ++terminalCounter;
+    Serial.print("[!] Terminal command received. Current Count: ");
+    Serial.println(terminalCounter);
+
+    if(Serial.peek() == 's'){
+      sdCard s;
+      char sdCard = Serial.read(); //remove the s
+      uint8_t sdCommand = Serial.parseInt(); //parse the number
+      s.sdCommand = sdCommand;
+      
+      ++counter;
+      rf69.send((uint8_t *)&s, sizeof(s));
+      rf69.waitPacketSent();
+      
+      //send the number
+      clearBuffer();
+      usageMessage();
+      return;
+    }
+    
     polling p;
     p.polling_rate = Serial.parseInt();
     p.message_id = counter;
     
     // clears out buffer for next read
-    while(Serial.available() > 0){
-      Serial.read();
-    }
+    clearBuffer();
 
     // check validity of polling rate
     if ((p.polling_rate == 0) || (p.polling_rate >= MINPERIOD)) {
@@ -92,6 +113,7 @@ void readInput(){
       }
     } else {
       Serial.print(p.polling_rate); Serial.println("ms is too fast, please enter another value.");
+      delay(2000);
     }
   }
 }
@@ -119,11 +141,11 @@ void displayPacketData(statusStruct &packet){
    Serial.print(packet.polling_rate); Serial.println("ms");
   }
   
-  Serial.print("  Date & Time:\n    "); 
+  Serial.print("  Date & Time:    "); 
   // Year/Month/Day
   Serial.print(packet.year); Serial.print("/");
   Serial.print(packet.month); Serial.print("/");
-  Serial.println(packet.day);
+  Serial.print(packet.day);
   Serial.print("    ");
   // Hour:Minute:Second
   Serial.print(packet.hour); Serial.print(":");
@@ -162,7 +184,7 @@ void displayPacketData(statusStruct &packet){
     Serial.println(" }");
     //Serial.print("Compass Heading: "); Serial.println(packet.mag_heading);
     
-    Serial.println("</packet>");
+    Serial.println("</packet>"); Serial.println();
  }
 
  /*
@@ -203,4 +225,10 @@ void loop() {
 
     displayPacketData(radioPacket);
   }
+}
+
+void clearBuffer(){
+  while(Serial.available() > 0){
+      Serial.read();
+    }
 }

@@ -42,6 +42,8 @@ void setup() {
 void loop() {
   // look for user input about new polling rate
   onDemand = checkPollingUpdate();
+
+  checkSdCardUpdate();
   
   // pull chars one at a time from the GPS
   GPS.read();
@@ -148,6 +150,35 @@ bool checkPollingUpdate(){
     }
   }
   return false;
+}
+
+/*
+ * Checks to see if a SD Card updated is received.
+ */
+void checkSdCardUpdate(){
+  sdCard s;
+  uint8_t len = sizeof(s);
+
+  // check to see if the packet received is the correct one
+  if(rf69.available() && rf69.recv((uint8_t *)&s, &len)){
+    #if !HEADLESS
+    Serial.print("Received [");
+    Serial.print(len);
+    Serial.print("] Command: ");
+    Serial.println(s.sdCommand);
+    #endif
+  }
+
+  switch(s.sdCommand){
+    case 0: //disable logging
+      break;
+    case 1: //enable logging
+      break;
+    case 2: //start a new log
+      break;
+    case 9: //erase the log
+      break;
+  }
 }
 
 // Output to serial if HEADLESS is false

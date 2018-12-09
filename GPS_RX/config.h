@@ -17,5 +17,6 @@
 #include <RH_RF69.h>
 
 unsigned int counter = 0;
+unsigned int terminalCounter = 0;
 
 #define MINPERIOD 100

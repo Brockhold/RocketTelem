@@ -99,3 +99,8 @@ struct polling {
   
   uint16_t polling_rate;
 };
+
+// Packet to decode from the receiver to update SD Card logging
+struct sdCard {
+  uint8_t sdCommand;
+};
