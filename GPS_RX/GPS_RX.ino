@@ -10,6 +10,7 @@
 #include "radioDecode.h"
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT); // radio driver instance
+Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
 void usageMessage() {
   Serial.print(" | To set a polling rate enter a value between "); Serial.print(MINPERIOD);
@@ -49,6 +50,15 @@ void rfInitialize(){
   rf69.setEncryptionKey(key);
 
   Serial.print("[!] RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+}
+
+bool btInit() {
+  ble.begin(VERBOSE_MODE);
+  ble.factoryReset();
+  ble.echo(false);
+  ble.verbose(false);
+  
+  ble.setMode(BLUEFRUIT_MODE_DATA);
 }
 
 // toggle the given pin by some count # of times for a duration of 'wait'
@@ -115,6 +125,62 @@ void readInput(){
       }
     } else {
       Serial.print(p.polling_rate); Serial.println("ms is too fast, please enter another value.");
+      delay(2000);
+    }
+  }
+}
+
+void readBTInput() {
+  //send 0 or <emptystring> for on-demand mode. press enter to receive data.
+  if(ble.available()){
+
+    //count of commands received
+    ++terminalCounter;
+    ble.print("[!] BT command received. Current Count: ");
+    ble.println(terminalCounter);
+
+    if(ble.peek() == 's'){
+      polling s;
+      char sdCard = ble.read(); //remove the s
+      uint8_t sdCommand = ble.parseInt(); //parse the number
+      ble.print("Sending SD Card update: "); ble.print(sdCard); ble.print(" "); ble.println(sdCommand);
+      s.sdCommand = sdCommand;
+      s.message_id = counter;
+      s.sdCard = sdCard;
+      
+      ++counter;
+      rf69.send((uint8_t *)&s, sizeof(s));
+      rf69.waitPacketSent();
+      
+      clearBuffer();
+      usageMessage();
+      return;
+    }
+    
+    polling p;
+    p.polling_rate = ble.parseInt();
+    p.message_id = counter;
+    
+    // clears out buffer for next read
+    clearBuffer();
+
+    // check validity of polling rate
+    if ((p.polling_rate == 0) || (p.polling_rate >= MINPERIOD)) {
+      // Send polling rate to TX
+      ++counter;
+      rf69.send((uint8_t *)&p, sizeof(p));
+      rf69.waitPacketSent();
+      
+      // tell the user about the new polling rate, and optionally the usage
+      if(p.polling_rate == 0){
+        ble.println("[!] Requested On-Demand update(s)");
+        usageMessage();
+      } else {
+        ble.print("[!] Polling rate has been updated to: ");
+        ble.print(p.polling_rate); ble.println("ms");
+      }
+    } else {
+      ble.print(p.polling_rate); ble.println("ms is too fast, please enter another value.");
       delay(2000);
     }
   }
@@ -190,6 +256,55 @@ void displayPacketData(statusStruct &packet){
     Serial.println("</packet>"); Serial.println();
  }
 
+void btPrint(statusStruct &packet) {
+  ble.print("Packet ID: "); ble.println(packet.message_id);
+  ble.print(" rate: ");
+  if(packet.polling_rate < 2){
+   ble.println("On-Demand");
+  }else{
+   ble.print(packet.polling_rate); ble.println("ms");
+  }
+  ble.print("Log: "); ble.println(packet.sdStatus ? "Yes" : "No");
+  
+  ble.print("  Date & Time:    "); 
+  // Year/Month/Day
+  ble.print(packet.year); ble.print("/");
+  ble.print(packet.month); ble.print("/");
+  ble.print(packet.day);
+  ble.print("    ");
+  // Hour:Minute:Second
+  ble.print(packet.hour); ble.print(":");
+  ble.print(packet.minute); ble.print(":");
+  ble.println(packet.seconds);
+
+  // Transmitter battery level
+  ble.print((float)packet.batt_level / 1024); ble.println("v");
+  ble.print(packet.temperature); ble.println("c"); 
+
+  // GPS reception status
+  ble.print("Fix: "); ble.print(packet.fix?"Yes":"No");
+  ble.print(", Q: "); ble.print(packet.fixquality);
+  ble.print(", Sats: "); ble.println(packet.satellites);
+
+    // If there is a GPS fix, print the reported Lat & Ln
+    if (packet.fix) {
+      ble.print("Loc: ");
+      if ((char) packet.lat == 'S') ble.print("-");
+      ble.print(packet.latitude_fixed/10000000); ble.print("."); ble.print(packet.latitude_fixed % 10000000);
+      ble.print(", ");
+      if ((char) packet.lon == 'W') ble.print("-");
+      ble.print(packet.longitude_fixed/10000000); ble.print("."); ble.println(packet.longitude_fixed % 10000000);
+    }
+    // Barometric altimeter status
+    ble.print("Alt: "); Serial.println(packet.bar_alt);
+    // Accelerometer status
+    ble.print("Accel{"); 
+    ble.print(" P: "); ble.print((float)(packet.pitch) / 700); 
+    ble.print(" R: "); ble.print((float)(packet.roll) / 300);
+    ble.print(" H: "); ble.print((float)(packet.heading) / 180);
+    ble.println(" }\n");
+}
+
  /*
  * SETUP
  */
@@ -202,6 +317,7 @@ void setup() {
   digitalWrite(RFM69_RST, LOW);
 
   rfInitialize();
+  btInit();
   usageMessage();
 }
 
@@ -212,7 +328,7 @@ void setup() {
 void loop() {
   
   readInput(); // check for new polling rate directive from user
-
+  //readBTInput();
   struct statusStruct radioPacket;
   uint8_t len = sizeof(radioPacket);
   if (rf69.available() && rf69.recv((uint8_t *)&radioPacket, &len)) {
@@ -227,6 +343,7 @@ void loop() {
     Serial.println(rf69.lastRssi(), DEC);
 
     displayPacketData(radioPacket);
+    btPrint(radioPacket);
   }
 }
 
