@@ -37,6 +37,10 @@ struct statusStruct {
   // mapped to 0-100% battery capacity
   uint16_t batt_level;
   // 38 bytes
+
+  // sd Card status
+  boolean sdStatus;
+  // 39 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -44,7 +48,7 @@ struct statusStruct {
 
 typedef struct statusStruct StatusStruct;
 
-statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, int16_t &temperature, Adafruit_GPS* GPS, uint16_t &polling_rate) {
+statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, int16_t &temperature, Adafruit_GPS* GPS, uint16_t &polling_rate, boolean &sdEnabled) {
   statusStruct ss;
   ss.fix = GPS->fix;
   ss.lat = GPS->lat;
@@ -76,6 +80,7 @@ statusStruct buildPacket(const sensors_vec_t &orientation, int16_t &altitude, in
   // get the battery level (value * divider * vRef) note that unit is 1024x higher than the voltage
   float vMeasured = analogRead(VBATPIN) * 2 * 3.3;
   ss.batt_level = (int)(vMeasured);
+  ss.sdStatus = sdEnabled;
   
 
   return ss;
@@ -98,9 +103,8 @@ struct polling {
   uint32_t message_id;
   
   uint16_t polling_rate;
-};
 
-// Packet to decode from the receiver to update SD Card logging
-struct sdCard {
+  char sdCard;
+
   uint8_t sdCommand;
 };

@@ -66,5 +66,10 @@ float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 // This timer is used in the loop() method to service the sensor checking
 unsigned long timer = millis();
 
+// SD Card config data
+unsigned long sdClock = millis(); // keeps the filename somewhat unique. good enough
+String fileName = String("logFile") + String(sdClock) + String(".txt"); // filename to concat sdClock to
+boolean sdEnabled = true;
+
 // set onDemand to true when the user requests an update, and returned to false after update has been serviced
 bool onDemand = false; 

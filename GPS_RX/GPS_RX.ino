@@ -74,16 +74,18 @@ void readInput(){
     Serial.println(terminalCounter);
 
     if(Serial.peek() == 's'){
-      sdCard s;
+      polling s;
       char sdCard = Serial.read(); //remove the s
       uint8_t sdCommand = Serial.parseInt(); //parse the number
+      Serial.print("Sending SD Card update: "); Serial.print(sdCard); Serial.print(" "); Serial.println(sdCommand);
       s.sdCommand = sdCommand;
+      s.message_id = counter;
+      s.sdCard = sdCard;
       
       ++counter;
       rf69.send((uint8_t *)&s, sizeof(s));
       rf69.waitPacketSent();
       
-      //send the number
       clearBuffer();
       usageMessage();
       return;
@@ -140,6 +142,7 @@ void displayPacketData(statusStruct &packet){
   }else{
    Serial.print(packet.polling_rate); Serial.println("ms");
   }
+  Serial.print("    Logging Status: "); Serial.println(packet.sdStatus ? "Enabled" : "Disabled");
   
   Serial.print("  Date & Time:    "); 
   // Year/Month/Day

@@ -36,6 +36,10 @@ struct statusStruct {
   //mapped to 0-100% battery capacity
   uint16_t batt_level;
   // 38 bytes
+
+  // sd Card status
+  boolean sdStatus;
+  // 39 bytes
   
   // these are useless and probably take too much space anyway
   //float latitudeDegrees, longitudeDegrees, geoidheight, altitude, speed, angle, magvariation, HDOP;
@@ -48,9 +52,8 @@ struct polling{
   uint32_t message_id;
   
   uint16_t polling_rate;
-};
 
-// Packet to decode from the receiver to update SD Card logging
-struct sdCard {
+  char sdCard;
+
   uint8_t sdCommand;
 };

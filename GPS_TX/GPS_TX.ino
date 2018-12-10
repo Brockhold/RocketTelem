@@ -29,9 +29,10 @@ void setup() {
   gpsInitialize();
   initSensors();
   if (sdInitialize(SD_CS)) {
-    logFile = SD.open("startlog.txt", FILE_WRITE);
+    logFile = SD.open(fileName, FILE_WRITE);
     if (logFile) {
       logFile.println("Log start");
+      logFile.flush();
     }
   }
 }
@@ -43,7 +44,7 @@ void loop() {
   // look for user input about new polling rate
   onDemand = checkPollingUpdate();
 
-  checkSdCardUpdate();
+  //checkSdCardUpdate();
   
   // pull chars one at a time from the GPS
   GPS.read();
@@ -78,6 +79,8 @@ void loop() {
     #endif
     
     outputToSerial(&radioPacket);
+
+    logToSdCard(&radioPacket);
     
     timer = millis(); // reset the timer
   }
@@ -116,7 +119,7 @@ statusStruct getSensorData(){
     ++counter; // Increase message counter for tracking packets
 
     // take all those structures and copy their values into the radio packet struct
-    return buildPacket(orientation, altitude_int, temp_int, &GPS, updateFrequency);
+    return buildPacket(orientation, altitude_int, temp_int, &GPS, updateFrequency, sdEnabled);
 }
 
 /*
@@ -141,6 +144,44 @@ bool checkPollingUpdate(){
     Serial.println(p.polling_rate);
     #endif
 
+    // Placing this here to resolve a packet receive bug
+    // I dont like this but it works.
+    if(p.sdCard == 's'){
+      switch(p.sdCommand){
+        case 0: //disable logging
+          sdEnabled = false;
+          break;
+        case 1: //enable logging
+          sdEnabled = true;
+          break;
+        case 2: //start a new log
+          logFile.flush();
+          logFile.close();
+          sdClock = millis();
+          fileName = String("logFile") + String(sdClock) + String(".txt");
+          logFile = SD.open(fileName, FILE_WRITE);
+          if (logFile) {
+            logFile.println("Log start");
+            logFile.flush();
+          }
+          break;
+        case 9: //erase the current log
+          logFile.close();
+          SD.remove(fileName);
+          logFile = SD.open(fileName, FILE_WRITE);
+          if (logFile) {
+            logFile.println("Log start");
+            logFile.flush();
+          }
+          break;
+        default:
+          break;
+      }
+
+      return onDemand;
+    }
+    
+
     if(p.polling_rate == 0){
       updateFrequency = p.polling_rate;
       return true;
@@ -152,33 +193,46 @@ bool checkPollingUpdate(){
   return false;
 }
 
-/*
- * Checks to see if a SD Card updated is received.
- */
-void checkSdCardUpdate(){
-  sdCard s;
-  uint8_t len = sizeof(s);
+void logToSdCard(StatusStruct* message){
+  if(sdEnabled){
+    String data = structToString(message);
 
-  // check to see if the packet received is the correct one
-  if(rf69.available() && rf69.recv((uint8_t *)&s, &len)){
-    #if !HEADLESS
-    Serial.print("Received [");
-    Serial.print(len);
-    Serial.print("] Command: ");
-    Serial.println(s.sdCommand);
-    #endif
+    if(logFile){
+      logFile.println(data);
+      logFile.flush();
+      #if !HEADLESS
+      Serial.print("Data logged: ");
+      Serial.println(data);
+      #endif
+    }
   }
+  return;
+}
 
-  switch(s.sdCommand){
-    case 0: //disable logging
-      break;
-    case 1: //enable logging
-      break;
-    case 2: //start a new log
-      break;
-    case 9: //erase the log
-      break;
+String structToString(StatusStruct* message){
+  String data = String();
+  data += String("Message ID: ") + String(message->message_id);
+  data += String(" | Current Polling Rate: ") + String(message->polling_rate);
+  data += String(" | Time: ") + String(message->hour) + String(":") + String(message->minute) + String(":") + String(message->seconds);
+  data += String(" | Date: ") + String(message->year) + String("/") + String(message->month) + String("/") + String(message->day);
+  data += String(" | Battery voltage: ") + String(((float)message->batt_level / 1024)) + String("v");
+  data += String(" | Fix: ") + String(message->fix);
+  data += String(" | Quality: ") + String(message->fixquality);
+  data += String(" | Satellites: ") + String(message->satellites);
+  if(message->fix > 0){
+    //log the gps location
+    data += String(" | Location: ");
+    if ((char) message->lat == 'S') data += String("-");
+    data += String(message->latitude_fixed/10000000) + String(".") + String(message->latitude_fixed % 10000000);
+    data += String(", ");
+    if((char) message->lon == 'W') data += String("-");
+    data += String(message->longitude_fixed/10000000) + String(".") + String(message->longitude_fixed % 10000000);
   }
+  
+  data += String(" | Temperature: ") + String(message->temperature) + String("ºC");
+  data += String(" | Baro Alt: ") + String(message->bar_alt);
+  data += String(" | Pitch/Roll/Heading: ") + String(message->pitch) + String("/") + String(message->roll) + String("/") + String(message->heading);
+  return data;
 }
 
 // Output to serial if HEADLESS is false
