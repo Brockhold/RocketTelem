@@ -76,7 +76,7 @@ void blink(int pin, int count, int wait) {
  */
 void readInput(){
   //send 0 or <emptystring> for on-demand mode. press enter to receive data.
-  if(Serial.available() > 0){
+  if(Serial.available()){
 
     //count of commands received
     ++terminalCounter;
@@ -242,9 +242,11 @@ void displayPacketData(statusStruct &packet){
       Serial.print(", ");
       if ((char) packet.lon == 'W') Serial.print("-");
       Serial.print(packet.longitude_fixed/10000000); Serial.print("."); Serial.println(packet.longitude_fixed % 10000000);
+    } else {
+      Serial.println("    Location: +000.000000, +000.000000");
     }
     // Barometric altimeter status
-    Serial.print("    Altitude: "); Serial.println(packet.bar_alt);
+    Serial.print("    Altitude: "); Serial.println(abs(packet.bar_alt));
     // Accelerometer status
     Serial.print("    Accelerometer {"); 
     Serial.print(" Pitch: "); Serial.print((float)(packet.pitch) / 700); 
