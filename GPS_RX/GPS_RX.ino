@@ -257,7 +257,7 @@ void displayPacketData(statusStruct &packet){
  }
 
 void btPrint(statusStruct &packet) {
-  ble.print("Packet ID: "); ble.println(packet.message_id);
+  ble.print("Packet ID: "); ble.print(packet.message_id);
   ble.print(" rate: ");
   if(packet.polling_rate < 2){
    ble.println("On-Demand");
@@ -266,7 +266,6 @@ void btPrint(statusStruct &packet) {
   }
   ble.print("Log: "); ble.println(packet.sdStatus ? "Yes" : "No");
   
-  ble.print("  Date & Time:    "); 
   // Year/Month/Day
   ble.print(packet.year); ble.print("/");
   ble.print(packet.month); ble.print("/");
